@@ -1,0 +1,340 @@
+---
+title: InheritedComponent
+description: API reference for InheritedComponent class
+---
+
+## Overview
+
+`InheritedComponent` is the base class for components that efficiently propagate information down the tree. When referenced, inherited components cause the consumer to rebuild when the inherited component itself changes state.
+
+## Constructor
+
+```dart
+const InheritedComponent({
+  required Component child,
+  Key? key,
+})
+```
+
+<ParamField path="child" type="Component" required>
+  The component below this component in the tree.
+</ParamField>
+
+<ParamField path="key" type="Key?">
+  An optional key to use for controlling how components are replaced in the tree.
+</ParamField>
+
+## Properties
+
+### child
+
+```dart
+final Component child
+```
+
+The component below this component in the tree.
+
+<ResponseField name="child" type="Component">
+  The child component.
+</ResponseField>
+
+## Methods
+
+### updateShouldNotify
+
+```dart
+bool updateShouldNotify(covariant InheritedComponent oldComponent)
+```
+
+Whether the framework should notify components that inherit from this component.
+
+<ParamField path="oldComponent" type="InheritedComponent">
+  The component that previously occupied this location in the tree. Guaranteed to have the same `runtimeType` as this object.
+</ParamField>
+
+<ResponseField name="return" type="bool">
+  `true` if dependent components should be notified, `false` otherwise.
+</ResponseField>
+
+**When to return `false`:**
+- The data held by this component is the same as the data held by `oldComponent`
+- No dependent components need to rebuild
+
+**Example:**
+
+```dart
+@override
+bool updateShouldNotify(MyInheritedComponent oldComponent) {
+  return data != oldComponent.data;
+}
+```
+
+### createElement
+
+```dart
+Element createElement()
+```
+
+Creates an `InheritedElement` to manage this component's location in the tree.
+
+<ResponseField name="return" type="InheritedElement">
+  The element that will manage this component.
+</ResponseField>
+
+## Accessing Inherited Components
+
+### Using BuildContext
+
+Descendant components can access the nearest instance of an inherited component using:
+
+```dart
+T? dependOnInheritedComponentOfExactType<T extends InheritedComponent>()
+```
+
+This establishes a dependency relationship - the calling component will rebuild when the inherited component changes.
+
+## Implementing the `of` Method
+
+By convention, provide a static `of` method on the `InheritedComponent` that calls `dependOnInheritedComponentOfExactType`:
+
+```dart
+static MyInheritedComponent? of(BuildContext context) {
+  return context.dependOnInheritedComponentOfExactType<MyInheritedComponent>();
+}
+
+// Or with a required non-null variant
+static MyInheritedComponent of(BuildContext context) {
+  final result = context.dependOnInheritedComponentOfExactType<MyInheritedComponent>();
+  assert(result != null, 'No MyInheritedComponent found in context');
+  return result!;
+}
+```
+
+## Example Usage
+
+### Basic Theme Provider
+
+```dart
+class Theme extends InheritedComponent {
+  const Theme({
+    required this.primaryColor,
+    required super.child,
+    super.key,
+  });
+
+  final String primaryColor;
+
+  static Theme? of(BuildContext context) {
+    return context.dependOnInheritedComponentOfExactType<Theme>();
+  }
+
+  @override
+  bool updateShouldNotify(Theme oldComponent) {
+    return primaryColor != oldComponent.primaryColor;
+  }
+}
+
+// Usage
+Theme(
+  primaryColor: '#007bff',
+  child: MyApp(),
+)
+
+// Accessing in a child component
+class ThemedButton extends StatelessComponent {
+  @override
+  Component build(BuildContext context) {
+    final theme = Theme.of(context);
+    return button(
+      styles: Styles.raw({'color': theme?.primaryColor ?? '#000'}),
+      [text('Themed Button')],
+    );
+  }
+}
+```
+
+### User Context Provider
+
+```dart
+class UserContext extends InheritedComponent {
+  const UserContext({
+    required this.user,
+    required super.child,
+    super.key,
+  });
+
+  final User? user;
+
+  static UserContext of(BuildContext context) {
+    final result = context.dependOnInheritedComponentOfExactType<UserContext>();
+    assert(result != null, 'No UserContext found in context');
+    return result!;
+  }
+
+  @override
+  bool updateShouldNotify(UserContext oldComponent) {
+    return user != oldComponent.user;
+  }
+}
+
+// Usage
+UserContext(
+  user: currentUser,
+  child: Dashboard(),
+)
+
+// Accessing
+class UserProfile extends StatelessComponent {
+  @override
+  Component build(BuildContext context) {
+    final userContext = UserContext.of(context);
+    final user = userContext.user;
+    
+    return div([
+      h2([text('Welcome, ${user?.name}')]),
+      p([text('Email: ${user?.email}')]),
+    ]);
+  }
+}
+```
+
+### Configuration Provider
+
+```dart
+class AppConfig extends InheritedComponent {
+  const AppConfig({
+    required this.apiUrl,
+    required this.timeout,
+    required super.child,
+    super.key,
+  });
+
+  final String apiUrl;
+  final Duration timeout;
+
+  static AppConfig of(BuildContext context) {
+    final result = context.dependOnInheritedComponentOfExactType<AppConfig>();
+    assert(result != null, 'No AppConfig found in context');
+    return result!;
+  }
+
+  @override
+  bool updateShouldNotify(AppConfig oldComponent) {
+    return apiUrl != oldComponent.apiUrl ||
+           timeout != oldComponent.timeout;
+  }
+}
+```
+
+### With Default Values
+
+```dart
+class LocaleProvider extends InheritedComponent {
+  const LocaleProvider({
+    this.locale = 'en',
+    required super.child,
+    super.key,
+  });
+
+  final String locale;
+
+  static String localeOf(BuildContext context) {
+    return context
+        .dependOnInheritedComponentOfExactType<LocaleProvider>()
+        ?.locale ?? 'en'; // Fallback to 'en'
+  }
+
+  @override
+  bool updateShouldNotify(LocaleProvider oldComponent) {
+    return locale != oldComponent.locale;
+  }
+}
+
+// Usage with fallback
+class LocalizedText extends StatelessComponent {
+  const LocalizedText({required this.key, super.key});
+
+  final String key;
+
+  @override
+  Component build(BuildContext context) {
+    final locale = LocaleProvider.localeOf(context);
+    return text(translate(key, locale));
+  }
+}
+```
+
+## Dependency Lifecycle
+
+When a component calls `dependOnInheritedComponentOfExactType`:
+
+<Steps>
+  <Step title="Dependency Registration">
+    The framework registers the calling component as a dependent of the inherited component.
+  </Step>
+  
+  <Step title="Update Detection">
+    When the inherited component is rebuilt, `updateShouldNotify` is called.
+  </Step>
+  
+  <Step title="Notification">
+    If `updateShouldNotify` returns `true`, the framework calls `didChangeDependencies` on all dependent components.
+  </Step>
+  
+  <Step title="Rebuild">
+    Dependent components are marked for rebuild and will rebuild with the new inherited data.
+  </Step>
+</Steps>
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Implement updateShouldNotify efficiently">
+    Only perform shallow comparisons in `updateShouldNotify`. Deep comparisons can hurt performance.
+    
+    ```dart
+    @override
+    bool updateShouldNotify(MyComponent old) {
+      // Good: shallow comparison
+      return value != old.value;
+      
+      // Avoid: deep comparison
+      // return deepEquals(complexObject, old.complexObject);
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="Use const constructors">
+    Make inherited components const when possible to improve performance.
+    
+    ```dart
+    const Theme(
+      primaryColor: '#007bff',
+      child: MyApp(),
+    )
+    ```
+  </Accordion>
+
+  <Accordion title="Provide an 'of' method">
+    Always provide a static `of` method for convenient access to the inherited component.
+  </Accordion>
+
+  <Accordion title="Consider null safety">
+    Decide whether your `of` method should return nullable or throw when not found.
+  </Accordion>
+</AccordionGroup>
+
+## Important Notes
+
+<Warning>
+  When using the `of` method, the `context` must be a descendant of the `InheritedComponent`, meaning it must be "below" the `InheritedComponent` in the tree. You cannot access an inherited component from the same level or above it.
+</Warning>
+
+<Note>
+  You cannot use `BuildContext.dependOnInheritedComponentOfExactType` from `State.initState`. However, `didChangeDependencies` will be called immediately following `initState`, and `dependOnInheritedComponentOfExactType` can be used there.
+</Note>
+
+## Related Components
+
+- [StatelessComponent](/api/components/stateless) - For components without mutable state
+- [StatefulComponent](/api/components/stateful) - For components with mutable state

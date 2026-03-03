@@ -1,0 +1,594 @@
+---
+title: Static Site Generation
+description: Pre-render static sites with Jaspr for maximum performance
+---
+
+Static Site Generation (SSG) pre-renders all pages at build time, creating static HTML files that can be deployed to any hosting provider. This provides the fastest possible performance and excellent SEO.
+
+## Configuration
+
+To use static site generation, set the mode in `jaspr_options.yaml`:
+
+```yaml jaspr_options.yaml
+mode: static
+```
+
+This tells Jaspr to generate static HTML files during the build process instead of a server executable.
+
+## How Static Generation Works
+
+The static build process follows these steps:
+
+<Steps>
+  <Step title="Build Web Assets">
+    Compiles Dart to JavaScript for client-side components
+  </Step>
+  
+  <Step title="Start Temporary Server">
+    Runs your app in a temporary server to render pages
+  </Step>
+  
+  <Step title="Generate Routes">
+    Visits each route and saves the rendered HTML
+  </Step>
+  
+  <Step title="Create Output">
+    Outputs static files to `build/jaspr/`
+  </Step>
+</Steps>
+
+## Defining Routes
+
+Jaspr needs to know which routes to generate. The recommended way is using `jaspr_router`:
+
+### Using jaspr_router
+
+<CodeGroup>
+```dart lib/main.server.dart
+import 'package:jaspr/server.dart';
+import 'package:jaspr_router/jaspr_router.dart';
+
+void main() {
+  Jaspr.initializeApp();
+  
+  runApp(Document(
+    body: Router(routes: [
+      Route(path: '/', builder: (_, __) => HomePage()),
+      Route(path: '/about', builder: (_, __) => AboutPage()),
+      Route(path: '/contact', builder: (_, __) => ContactPage()),
+    ]),
+  ));
+}
+```
+
+```dart lib/pages/home_page.dart
+import 'package:jaspr/jaspr.dart';
+
+class HomePage extends StatelessComponent {
+  @override
+  Component build(BuildContext context) {
+    return div([
+      h1([.text('Welcome')]),
+      p([.text('This is the home page')]),
+    ]);
+  }
+}
+```
+</CodeGroup>
+
+The router automatically generates all defined routes during `jaspr build`.
+
+### Dynamic Routes
+
+Generate routes dynamically based on data:
+
+```dart lib/main.server.dart
+import 'package:jaspr/server.dart';
+import 'package:jaspr_router/jaspr_router.dart';
+
+Future<void> main() async {
+  // Load blog posts from a data source
+  final posts = await loadBlogPosts();
+  
+  Jaspr.initializeApp();
+  
+  runApp(Document(
+    body: Router(routes: [
+      Route(path: '/', builder: (_, __) => HomePage()),
+      Route(path: '/blog', builder: (_, __) => BlogIndexPage(posts: posts)),
+      
+      // Generate a route for each blog post
+      for (var post in posts)
+        Route(
+          path: '/blog/${post.slug}',
+          builder: (_, __) => BlogPostPage(post: post),
+        ),
+    ]),
+  ));
+}
+
+Future<List<BlogPost>> loadBlogPosts() async {
+  // Load from database, API, or files
+  return [
+    BlogPost(slug: 'first-post', title: 'First Post', content: '...'),
+    BlogPost(slug: 'second-post', title: 'Second Post', content: '...'),
+  ];
+}
+```
+
+<Note>
+**Important:** You cannot use path parameters (like `/blog/:id`) in static mode. Each route must be explicitly defined.
+</Note>
+
+### Manual Route Registration
+
+Without `jaspr_router`, manually register routes:
+
+```dart
+import 'package:jaspr/server.dart';
+
+class App extends StatefulComponent {
+  @override
+  State createState() => _AppState();
+}
+
+class _AppState extends State<App> {
+  @override
+  void initState() {
+    super.initState();
+    
+    // Register routes for generation
+    ServerApp.requestRouteGeneration('/');
+    ServerApp.requestRouteGeneration('/about');
+    ServerApp.requestRouteGeneration('/contact');
+  }
+  
+  @override
+  Component build(BuildContext context) {
+    final path = context.binding.currentUrl;
+    
+    return Document(
+      body: switch (path) {
+        '/' => HomePage(),
+        '/about' => AboutPage(),
+        '/contact' => ContactPage(),
+        _ => NotFoundPage(),
+      },
+    );
+  }
+}
+```
+
+**Source:** `packages/jaspr/lib/src/server/server_app.dart:89`
+
+## Building Static Sites
+
+### Development
+
+During development, use `jaspr serve` to test your site:
+
+```bash
+jaspr serve
+```
+
+This runs a development server with hot-reload.
+
+### Production Build
+
+Generate the static site:
+
+```bash
+jaspr build
+```
+
+This creates:
+- `build/jaspr/index.html` - Home page
+- `build/jaspr/about/index.html` - About page
+- `build/jaspr/contact/index.html` - Contact page
+- `build/jaspr/main.dart.js` - Client-side JavaScript
+- `build/jaspr/styles.css` - Compiled styles
+- Other static assets (images, fonts, etc.)
+
+### Build Output
+
+The build process outputs:
+
+```
+build/jaspr/
+├── index.html
+├── about/
+│   └── index.html
+├── contact/
+│   └── index.html
+├── main.dart.js
+├── main.dart.js.map (if --include-source-maps)
+├── styles.css
+└── assets/
+    ├── images/
+    └── fonts/
+```
+
+## Sitemap Generation
+
+Generate a sitemap.xml for SEO:
+
+```bash
+jaspr build --sitemap-domain https://example.com
+```
+
+This creates `build/jaspr/sitemap.xml`:
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>https://example.com/</loc>
+    <lastmod>2026-03-03T12:00:00Z</lastmod>
+    <priority>0.5</priority>
+  </url>
+  <url>
+    <loc>https://example.com/about</loc>
+    <lastmod>2026-03-03T12:00:00Z</lastmod>
+    <priority>0.5</priority>
+  </url>
+</urlset>
+```
+
+### Customize Sitemap Entries
+
+With `jaspr_router`, use `RouteSettings`:
+
+```dart
+import 'package:jaspr_router/jaspr_router.dart';
+
+Router(routes: [
+  Route(
+    path: '/',
+    settings: RouteSettings(
+      changeFreq: ChangeFreq.daily,
+      priority: 1.0,
+    ),
+    builder: (_, __) => HomePage(),
+  ),
+  Route(
+    path: '/blog',
+    settings: RouteSettings(
+      changeFreq: ChangeFreq.weekly,
+      priority: 0.8,
+    ),
+    builder: (_, __) => BlogPage(),
+  ),
+])
+```
+
+With manual route registration:
+
+```dart
+ServerApp.requestRouteGeneration(
+  '/blog/my-post',
+  lastMod: '2026-03-03',
+  changefreq: 'weekly',
+  priority: 0.9,
+);
+```
+
+### Exclude Routes from Sitemap
+
+Exclude specific routes using a regex pattern:
+
+```bash
+jaspr build --sitemap-domain https://example.com --sitemap-exclude "^/admin|^/api"
+```
+
+Or exclude specific routes programmatically by setting sitemap data to false:
+
+```dart
+// In your component's build method
+context.binding.responseHeaders['jaspr-sitemap-data'] = 'false';
+```
+
+## Deployment
+
+Static sites can be deployed to any static hosting provider:
+
+<Tabs>
+  <Tab title="Vercel">
+    ```json vercel.json
+    {
+      "buildCommand": "dart pub global activate jaspr_cli && jaspr build",
+      "outputDirectory": "build/jaspr",
+      "installCommand": "dart pub get"
+    }
+    ```
+  </Tab>
+  
+  <Tab title="Netlify">
+    ```toml netlify.toml
+    [build]
+      command = "dart pub global activate jaspr_cli && jaspr build"
+      publish = "build/jaspr"
+    
+    [[redirects]]
+      from = "/*"
+      to = "/index.html"
+      status = 200
+    ```
+  </Tab>
+  
+  <Tab title="GitHub Pages">
+    ```yaml .github/workflows/deploy.yml
+    name: Deploy to GitHub Pages
+    
+    on:
+      push:
+        branches: [main]
+    
+    jobs:
+      build:
+        runs-on: ubuntu-latest
+        steps:
+          - uses: actions/checkout@v2
+          - uses: dart-lang/setup-dart@v1
+          - run: dart pub get
+          - run: dart pub global activate jaspr_cli
+          - run: jaspr build
+          - uses: peaceiris/actions-gh-pages@v3
+            with:
+              github_token: ${{ secrets.GITHUB_TOKEN }}
+              publish_dir: ./build/jaspr
+    ```
+  </Tab>
+  
+  <Tab title="Firebase Hosting">
+    ```json firebase.json
+    {
+      "hosting": {
+        "public": "build/jaspr",
+        "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
+        "rewrites": [
+          {
+            "source": "**",
+            "destination": "/index.html"
+          }
+        ]
+      }
+    }
+    ```
+    
+    Deploy:
+    ```bash
+    jaspr build
+    firebase deploy
+    ```
+  </Tab>
+</Tabs>
+
+## Client-Side Interactivity
+
+Static sites can include client-side components for interactivity:
+
+```dart
+import 'package:jaspr/jaspr.dart';
+
+class BlogPost extends StatelessComponent {
+  const BlogPost({required this.post});
+  
+  final Post post;
+  
+  @override
+  Component build(BuildContext context) {
+    return article([
+      h1([.text(post.title)]),
+      
+      // Server-rendered content (SEO-friendly)
+      div([.text(post.content)]),
+      
+      // Client-side interactive component
+      LikeButton(postId: post.id, initialLikes: post.likes),
+      
+      // Client-side comments
+      CommentsSection(postId: post.id),
+    ]);
+  }
+}
+
+@client
+class LikeButton extends StatefulComponent {
+  const LikeButton({required this.postId, required this.initialLikes});
+  
+  final String postId;
+  final int initialLikes;
+  
+  @override
+  State createState() => _LikeButtonState();
+}
+
+class _LikeButtonState extends State<LikeButton> {
+  late int likes;
+  bool isLiked = false;
+  
+  @override
+  void initState() {
+    super.initState();
+    likes = component.initialLikes;
+  }
+  
+  @override
+  Component build(BuildContext context) {
+    return button(
+      onClick: () {
+        setState(() {
+          isLiked = !isLiked;
+          likes += isLiked ? 1 : -1;
+        });
+      },
+      [.text('${isLiked ? "❤️" : "🤍"} $likes')],
+    );
+  }
+}
+```
+
+## Content-Driven Sites
+
+For blogs, documentation, and marketing sites, use `jaspr_content`:
+
+```dart lib/main.server.dart
+import 'package:jaspr/server.dart';
+import 'package:jaspr_content/jaspr_content.dart';
+
+void main() {
+  Jaspr.initializeApp();
+  
+  runApp(ContentApp(
+    loaders: [
+      FilesystemLoader('content'),
+    ],
+    config: PageConfig(
+      parsers: [MarkdownParser()],
+      extensions: [
+        TableOfContentsExtension(),
+        HeadingAnchorsExtension(),
+      ],
+      layouts: [
+        DocsLayout(
+          header: Header(title: 'My Docs'),
+          sidebar: Sidebar(groups: [
+            SidebarGroup(links: [
+              SidebarLink(text: 'Home', href: '/'),
+              SidebarLink(text: 'Guide', href: '/guide'),
+            ]),
+          ]),
+        ),
+      ],
+    ),
+  ));
+}
+```
+
+Create content files:
+
+```markdown content/index.md
+---
+title: Home
+---
+
+# Welcome to my site
+
+This content is loaded from markdown files.
+```
+
+`jaspr_content` automatically:
+- Generates routes for all content files
+- Parses markdown to HTML
+- Applies layouts and extensions
+- Includes client-side navigation
+
+<Note>
+See the [jaspr_content documentation](/content) for more details.
+</Note>
+
+## Optimization
+
+### Build Options
+
+Optimize the build output:
+
+```bash
+# Maximum optimization (default)
+jaspr build -O2
+
+# Aggressive optimization (may break some code)
+jaspr build -O4
+
+# Include source maps for debugging
+jaspr build --include-source-maps
+
+# Use WebAssembly instead of JavaScript
+jaspr build --experimental-wasm
+```
+
+### Lazy Loading
+
+Lazy-load client components for faster initial loads:
+
+```dart
+ClientLoader(
+  (params) => HeavyComponent(),
+  loader: () async {
+    // Load heavy dependencies asynchronously
+    await loadChartingLibrary();
+  },
+)
+```
+
+### Code Splitting
+
+Split client code by using multiple client entry points (advanced):
+
+```yaml jaspr_options.yaml
+mode: static
+clients:
+  - lib/clients/main.client.dart
+  - lib/clients/admin.client.dart
+```
+
+## Limitations
+
+<Warning>
+Static site generation has some limitations:
+
+- **No dynamic routes**: Cannot use path parameters like `/posts/:id`
+- **Build-time data**: All data must be available at build time
+- **No server logic**: Cannot run server-side code on requests
+- **Large sites**: Build time increases with the number of routes
+</Warning>
+
+If you need these features, consider using [server-side rendering](/rendering/server-side) instead.
+
+## API Reference
+
+### ServerApp.requestRouteGeneration()
+
+**Source:** `packages/jaspr/lib/src/server/server_app.dart:89`
+
+```dart
+static Future<void> requestRouteGeneration(
+  String route, {
+  String? lastMod,
+  String? changefreq,
+  double? priority,
+})
+```
+
+Requests a route to be generated during static site generation.
+
+## Best Practices
+
+<CardGroup cols={2}>
+  <Card title="Use jaspr_router" icon="route">
+    The router automatically handles route generation and client-side navigation.
+  </Card>
+  
+  <Card title="Generate Sitemaps" icon="sitemap">
+    Always generate a sitemap for better SEO.
+  </Card>
+  
+  <Card title="Optimize Images" icon="image">
+    Compress and optimize images before adding to your project.
+  </Card>
+  
+  <Card title="Minimize Client Code" icon="minimize">
+    Keep client components small for faster page loads.
+  </Card>
+</CardGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="jaspr_router" icon="route" href="/routing/overview">
+    Learn about routing and navigation
+  </Card>
+  <Card title="jaspr_content" icon="book" href="/content/overview">
+    Build content-driven sites with markdown
+  </Card>
+</CardGroup>

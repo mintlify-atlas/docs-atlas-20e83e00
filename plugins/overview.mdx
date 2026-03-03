@@ -1,0 +1,83 @@
+---
+title: Plugin Ecosystem
+description: Official plugins and integrations for Jaspr applications
+---
+
+Jaspr has a growing ecosystem of official plugins that extend the framework with routing, state management, content management, and backend integrations.
+
+## Available Plugins
+
+<CardGroup cols={2}>
+  <Card title="Router" icon="route" href="/plugins/router">
+    Client-side routing with lazy loading and code splitting
+  </Card>
+  
+  <Card title="Content" icon="file-lines" href="/plugins/content">
+    Build documentation sites, blogs, and marketing pages with markdown
+  </Card>
+  
+  <Card title="Riverpod" icon="water" href="/plugins/riverpod">
+    State management with Riverpod and server-client state syncing
+  </Card>
+  
+  <Card title="Serverpod" icon="server" href="/plugins/serverpod">
+    Full-stack integration with Serverpod backend framework
+  </Card>
+</CardGroup>
+
+## Plugin Categories
+
+### Routing & Navigation
+
+**jaspr_router** provides declarative routing with support for:
+- Nested routes and route parameters
+- Lazy routes with automatic code splitting
+- Client-side navigation without page reloads
+- Programmatic navigation
+
+### State Management
+
+**jaspr_riverpod** brings Riverpod's powerful state management to Jaspr with:
+- All provider types from Riverpod 3
+- Simplified API using context extensions
+- Server-to-client state synchronization
+- No Consumer widgets required
+
+### Content Management
+
+**jaspr_content** is a complete solution for content-driven sites featuring:
+- Markdown and HTML parsing
+- Frontmatter support
+- Built-in components and layouts
+- Theming with dark mode
+- Multiple content sources (filesystem, GitHub)
+
+### Backend Integration
+
+**jaspr_serverpod** seamlessly integrates with Serverpod for:
+- Server-side rendering with session access
+- Unified development workflow
+- Type-safe client-server communication
+- Simplified deployment
+
+## Installation
+
+All plugins are available on pub.dev and can be added to your project:
+
+```bash
+dart pub add jaspr_router
+dart pub add jaspr_content
+dart pub add jaspr_riverpod
+dart pub add jaspr_serverpod
+```
+
+## Plugin Compatibility
+
+All official plugins are designed to work together. You can combine:
+- Router with Riverpod for stateful navigation
+- Content with Router for documentation sites
+- Serverpod with any other plugin for full-stack apps
+
+## Community Plugins
+
+Interested in creating a plugin for Jaspr? Check out the [Contributing Guide](/contributing) to learn how to build and publish your own plugins.

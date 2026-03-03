@@ -1,0 +1,327 @@
+---
+title: jaspr_content
+description: Build content-driven sites with markdown, components, and theming
+---
+
+A comprehensive package for building documentation sites, blogs, and marketing pages with Jaspr. It provides out-of-the-box tools for loading, parsing, and rendering content from various sources.
+
+## Installation
+
+```bash
+dart pub add jaspr_content
+```
+
+**Current version:** 0.5.0
+
+## Quick Start
+
+Create a basic content-driven site:
+
+```dart
+import 'package:jaspr/server.dart';
+import 'package:jaspr_content/jaspr_content.dart';
+import 'package:jaspr_content/components/callout.dart';
+
+void main() {
+  Jaspr.initializeApp();
+
+  runApp(
+    ContentApp(
+      templateEngine: MustacheTemplateEngine(),
+      parsers: [MarkdownParser()],
+      components: [
+        Callout(),
+      ],
+      layouts: [EmptyLayout()],
+    ),
+  );
+}
+```
+
+## Features
+
+### Markdown Support
+
+Load and parse markdown files from your filesystem or remote sources:
+
+```dart
+ContentApp(
+  directory: 'content',  // Load markdown from content/
+  parsers: [MarkdownParser()],
+)
+```
+
+### Frontmatter
+
+Parse frontmatter data from your markdown files:
+
+```markdown
+---
+title: Getting Started
+author: John Doe
+date: 2024-03-15
+tags: [tutorial, beginner]
+---
+
+# Getting Started
+
+Your content here...
+```
+
+Access frontmatter in your components:
+
+```dart
+class MyPage extends StatelessComponent {
+  @override
+  Component build(BuildContext context) {
+    final page = PageContext.of(context);
+    final title = page.data['title'];
+    final author = page.data['author'];
+    
+    return div([
+      h1([text(title)]),
+      p([text('By $author')]),
+    ]);
+  }
+}
+```
+
+### Templating
+
+Use Mustache or Liquid templating to inject data:
+
+```dart
+ContentApp(
+  templateEngine: MustacheTemplateEngine(),
+  // or
+  templateEngine: LiquidTemplateEngine(),
+)
+```
+
+In your markdown:
+
+```markdown
+# Welcome, {{user.name}}!
+
+You have {{notifications.count}} new notifications.
+```
+
+### Built-in Components
+
+Enhance your content with custom components:
+
+```dart
+ContentApp(
+  components: [
+    Callout(),
+    Tabs(),
+    CodeBlock(),
+    FileTree(),
+  ],
+)
+```
+
+Use them in your markdown content files. For example, you can use Callout and Tabs components directly in your markdown pages.
+
+#### Available Components
+
+- **Callout** - Info boxes, warnings, and notes
+- **Tabs** - Tabbed content sections
+- **CodeBlock** - Syntax-highlighted code with copy button
+- **FileTree** - Visual file structure display
+- **Image** - Enhanced images with zoom support
+- **Markdown** - Inline markdown rendering
+- **ThemeToggle** - Light/dark mode switcher
+
+### Layouts
+
+Use pre-built layouts or create custom ones:
+
+```dart
+ContentApp(
+  layouts: [
+    DocsLayout(),    // Documentation layout with sidebar
+    BlogLayout(),    // Blog layout with post metadata
+    EmptyLayout(),   // Minimal layout
+  ],
+)
+```
+
+### Theming
+
+Customize the look and feel with built-in theming:
+
+```dart
+ContentApp(
+  theme: ContentTheme(
+    primaryColor: Color.hex('#0066cc'),
+    fontFamily: 'Inter, sans-serif',
+    codeTheme: 'github-dark',
+  ),
+)
+```
+
+Themes support:
+- Light and dark mode out of the box
+- Custom color schemes
+- Typography customization
+- Code syntax highlighting themes
+
+### Content Sources
+
+Load content from different sources:
+
+#### Filesystem
+
+```dart
+ContentApp.custom(
+  loaders: [
+    FilesystemLoader(directory: 'content'),
+  ],
+)
+```
+
+#### GitHub
+
+```dart
+ContentApp.custom(
+  loaders: [
+    GithubLoader(
+      owner: 'myorg',
+      repo: 'docs',
+      branch: 'main',
+      path: 'content',
+    ),
+  ],
+)
+```
+
+#### Memory (for testing)
+
+```dart
+ContentApp.custom(
+  loaders: [
+    MemoryLoader(
+      pages: {
+        '/': Page(content: '# Home', data: {}),
+        '/about': Page(content: '# About', data: {}),
+      },
+    ),
+  ],
+)
+```
+
+## Advanced Configuration
+
+For complete control over the content pipeline:
+
+```dart
+ContentApp.custom(
+  // Load pages from multiple sources
+  loaders: [
+    FilesystemLoader(directory: 'content'),
+    GithubLoader(owner: 'org', repo: 'docs'),
+  ],
+  
+  // Custom configuration per route
+  configResolver: (route) {
+    if (route.startsWith('/blog')) {
+      return PageConfig(
+        layout: BlogLayout(),
+        extensions: [TableOfContentsExtension()],
+      );
+    }
+    return PageConfig.defaults();
+  },
+  
+  // Data loaders for frontmatter
+  dataLoaders: [
+    FilesystemDataLoader(directory: 'content/_data'),
+  ],
+  
+  // Template preprocessing
+  templateEngine: MustacheTemplateEngine(),
+  
+  // Content parsers
+  parsers: [
+    MarkdownParser(),
+    HtmlParser(),
+  ],
+  
+  // Post-processing extensions
+  extensions: [
+    HeadingAnchorsExtension(),
+    TableOfContentsExtension(),
+  ],
+  
+  // Custom components
+  components: [
+    Callout(),
+    Tabs(),
+    MyCustomComponent(),
+  ],
+  
+  // Page layouts
+  layouts: [
+    DocsLayout(),
+    BlogLayout(),
+  ],
+  
+  // Site theme
+  theme: ContentTheme.defaults(),
+  
+  // Eager loading for collections
+  eagerlyLoadAllPages: false,
+)
+```
+
+## Content Pipeline
+
+For each page, the following steps are executed:
+
+1. Page is loaded by a `RouteLoader`
+2. Configuration is resolved by `ConfigResolver`
+3. Frontmatter is parsed and data loaded by `DataLoader`
+4. Content is preprocessed by `TemplateEngine`
+5. Content is parsed by `PageParser`
+6. Parsed content is processed by `PageExtension`s
+7. Content is rendered with `CustomComponent`s
+8. Result is wrapped in `PageLayout`
+9. Theme is applied and HTML is generated
+
+## Custom Components
+
+Create your own components for use in markdown:
+
+```dart
+class Alert extends CustomComponent {
+  @override
+  String get tag => 'Alert';
+  
+  @override
+  Component build(BuildContext context, Map<String, String> attributes, List<Component> children) {
+    final type = attributes['type'] ?? 'info';
+    
+    return div(
+      classes: 'alert alert-$type',
+      children,
+    );
+  }
+}
+
+// Register it
+ContentApp(
+  components: [Alert()],
+)
+
+// Use in markdown
+// <Alert type="warning">Be careful!</Alert>
+```
+
+## Resources
+
+- [Official Documentation](https://docs.jaspr.site/content)
+- [Quick Start Guide](https://docs.jaspr.site/content/quick_start)
+- [Component Reference](https://docs.jaspr.site/content/components/callout)
+- [GitHub Repository](https://github.com/schultek/jaspr/tree/main/packages/jaspr_content)
+- [API Documentation](https://pub.dev/documentation/jaspr_content)

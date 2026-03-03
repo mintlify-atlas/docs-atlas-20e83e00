@@ -1,0 +1,410 @@
+---
+title: Setting up server-side rendering
+description: Learn how to configure and use server-side rendering in Jaspr
+---
+
+Server-side rendering (SSR) is one of Jaspr's core features, allowing you to render components on the server and send HTML to the client for better SEO and initial page load performance.
+
+## How SSR works in Jaspr
+
+When a request comes to your Jaspr server:
+
+<Steps>
+  <Step title="Component rendering">
+    Jaspr renders your components to HTML on the server
+  </Step>
+  
+  <Step title="HTML generation">
+    The rendered HTML is embedded in a complete HTML document
+  </Step>
+  
+  <Step title="Client hydration">
+    The browser loads the HTML and JavaScript to make components interactive
+  </Step>
+  
+  <Step title="Interactivity">
+    Client-side code takes over, handling events and dynamic updates
+  </Step>
+</Steps>
+
+## Creating an SSR project
+
+Create a new Jaspr project with server-side rendering:
+
+```bash
+jaspr create my_ssr_app --mode server
+```
+
+This generates a project structure with:
+
+- `lib/app.dart` - Your main application component
+- `web/main.dart` - Client entry point for hydration
+- `bin/server.dart` - Server entry point
+
+## Project structure
+
+```
+my_ssr_app/
+├── lib/
+│   ├── app.dart           # Application component
+│   └── components/        # Reusable components
+├── web/
+│   └── main.dart          # Client entry (hydration)
+├── bin/
+│   └── server.dart        # Server entry
+├── jaspr_options.yaml     # Jaspr configuration
+└── pubspec.yaml
+```
+
+## Server entry point
+
+The server entry point in `bin/server.dart` sets up your application:
+
+```dart
+import 'package:jaspr/server.dart';
+import 'package:my_ssr_app/app.dart';
+
+void main() {
+  runApp(
+    Document(
+      title: 'My SSR App',
+      head: [
+        meta(charset: 'utf-8'),
+        meta(name: 'viewport', content: 'width=device-width, initial-scale=1'),
+      ],
+      body: App(),
+    ),
+  );
+}
+```
+
+<Note>
+The `runApp()` function on the server automatically:
+- Sets up an HTTP server on port 8080 (configurable)
+- Renders components to HTML for each request
+- Serves the client JavaScript bundle
+- Handles hot reload in development mode
+</Note>
+
+## Client entry point
+
+The client entry point in `web/main.dart` hydrates the server-rendered HTML:
+
+```dart
+import 'package:jaspr/browser.dart';
+import 'package:my_ssr_app/app.dart';
+
+void main() {
+  runApp(App());
+}
+```
+
+<Warning>
+The component tree in `web/main.dart` must match the server-rendered tree from `bin/server.dart` (excluding the Document wrapper).
+</Warning>
+
+## Making components server-only
+
+Some components should only run on the server. Use `AsyncStatelessComponent` for server-only logic:
+
+```dart
+import 'package:jaspr/jaspr.dart';
+
+class UserProfile extends AsyncStatelessComponent {
+  final String userId;
+  
+  const UserProfile({required this.userId});
+  
+  @override
+  Future<Component> build(BuildContext context) async {
+    // This code only runs on the server
+    final user = await fetchUserFromDatabase(userId);
+    
+    return div([
+      h2([text(user.name)]),
+      p([text(user.email)]),
+    ]);
+  }
+}
+```
+
+<Tip>
+`AsyncStatelessComponent` is perfect for:
+- Database queries
+- API calls to internal services
+- File system operations
+- Any server-only dependencies
+</Tip>
+
+## Client-side components
+
+Mark components that should only run on the client with `@client`:
+
+```dart
+import 'package:jaspr/jaspr.dart';
+
+@client
+class InteractiveMap extends StatefulComponent {
+  @override
+  State<InteractiveMap> createState() => _InteractiveMapState();
+}
+
+class _InteractiveMapState extends State<InteractiveMap> {
+  @override
+  Component build(BuildContext context) {
+    // This component is replaced with a placeholder during SSR
+    // and fully rendered on the client
+    return div([text('Map will load here')]);
+  }
+}
+```
+
+## State synchronization
+
+Use `SyncStateMixin` to automatically sync state between server and client:
+
+```dart
+import 'package:jaspr/jaspr.dart';
+
+class Counter extends StatefulComponent {
+  @override
+  State<Counter> createState() => _CounterState();
+}
+
+class _CounterState extends State<Counter> with SyncStateMixin {
+  int count = 0;
+  
+  @override
+  int getState() => count;
+  
+  @override
+  void updateState(int value) {
+    setState(() {
+      count = value;
+    });
+  }
+  
+  @override
+  Component build(BuildContext context) {
+    return div([
+      text('Count: $count'),
+      button(
+        onClick: (e) => setState(() => count++),
+        [text('Increment')],
+      ),
+    ]);
+  }
+}
+```
+
+The initial `count` value is rendered on the server and automatically synced to the client during hydration.
+
+## Preloading data
+
+Use `PreloadStateMixin` to fetch data on the server before rendering:
+
+```dart
+import 'package:jaspr/jaspr.dart';
+
+class ProductPage extends StatefulComponent {
+  final String productId;
+  
+  const ProductPage({required this.productId});
+  
+  @override
+  State<ProductPage> createState() => _ProductPageState();
+}
+
+class _ProductPageState extends State<ProductPage> with PreloadStateMixin {
+  late Product product;
+  
+  @override
+  Future<void> preload() async {
+    // Runs on the server before rendering
+    product = await fetchProduct(component.productId);
+  }
+  
+  @override
+  Component build(BuildContext context) {
+    return div([
+      h1([text(product.name)]),
+      p([text(product.description)]),
+      p([text('\$${product.price}')]),
+    ]);
+  }
+}
+```
+
+## Configuration
+
+Configure SSR in `jaspr_options.yaml`:
+
+```yaml
+mode: server
+
+servers:
+  - name: default
+    target: bin/server.dart
+    port: 8080
+
+clients:
+  - name: web
+    target: web/main.dart
+```
+
+### Port configuration
+
+You can also set the port in `pubspec.yaml`:
+
+```yaml
+jaspr:
+  server:
+    port: 3000
+```
+
+## Running your SSR app
+
+### Development
+
+```bash
+jaspr serve
+```
+
+This starts the development server with:
+- Hot reload for both server and client code
+- Live browser refresh
+- Debug mode compilation
+
+### Production build
+
+```bash
+jaspr build
+```
+
+This creates:
+- Optimized server executable in `build/jaspr/bin/server.exe`
+- Minified client JavaScript in `build/jaspr/web/`
+
+### Running in production
+
+```bash
+./build/jaspr/bin/server.exe
+```
+
+## Advanced server setup
+
+For more control, use `serveApp()` instead of `runApp()`:
+
+```dart
+import 'package:jaspr/server.dart';
+import 'package:shelf/shelf.dart';
+import 'package:shelf/shelf_io.dart' as shelf_io;
+import 'package:my_ssr_app/app.dart';
+
+void main() async {
+  final handler = serveApp(
+    (request, render) {
+      return render(
+        Document(
+          title: 'My SSR App',
+          body: App(),
+        ),
+      );
+    },
+  );
+  
+  // Add custom middleware
+  final pipeline = const Pipeline()
+      .addMiddleware(logRequests())
+      .addHandler(handler);
+  
+  // Start server
+  await shelf_io.serve(pipeline, 'localhost', 8080);
+  print('Server running on http://localhost:8080');
+}
+```
+
+## SEO optimization
+
+Add meta tags dynamically based on content:
+
+```dart
+import 'package:jaspr/jaspr.dart';
+
+class BlogPost extends AsyncStatelessComponent {
+  final String slug;
+  
+  const BlogPost({required this.slug});
+  
+  @override
+  Future<Component> build(BuildContext context) async {
+    final post = await fetchBlogPost(slug);
+    
+    return Document.head(
+      title: post.title,
+      meta: {
+        'description': post.excerpt,
+        'og:title': post.title,
+        'og:description': post.excerpt,
+        'og:image': post.coverImage,
+        'og:type': 'article',
+        'twitter:card': 'summary_large_image',
+      },
+      child: div([
+        h1([text(post.title)]),
+        RawText(post.htmlContent),
+      ]),
+    );
+  }
+}
+```
+
+## Best practices
+
+<AccordionGroup>
+  <Accordion title="Minimize server-side computation">
+    Keep server-side rendering fast by:
+    - Caching database queries
+    - Using async components efficiently
+    - Avoiding expensive computations in `build()`
+  </Accordion>
+  
+  <Accordion title="Handle errors gracefully">
+    Always handle errors in async operations:
+    
+    ```dart
+    @override
+    Future<Component> build(BuildContext context) async {
+      try {
+        final data = await fetchData();
+        return DataView(data: data);
+      } catch (e) {
+        return ErrorView(error: e);
+      }
+    }
+    ```
+  </Accordion>
+  
+  <Accordion title="Use appropriate rendering modes">
+    - Use SSR for content-heavy pages that need SEO
+    - Use CSR for admin dashboards and internal tools
+    - Use SSG for static content like blogs and docs
+  </Accordion>
+</AccordionGroup>
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Rendering modes" icon="server" href="/rendering/overview">
+    Learn about all rendering modes
+  </Card>
+  <Card title="State synchronization" icon="arrows-rotate" href="/api/server-client/sync-state">
+    Deep dive into SyncStateMixin
+  </Card>
+  <Card title="Preloading data" icon="download" href="/api/server-client/preload-state">
+    Master PreloadStateMixin
+  </Card>
+  <Card title="Deploy your app" icon="rocket" href="/advanced/deploying">
+    Deploy to production
+  </Card>
+</CardGroup>

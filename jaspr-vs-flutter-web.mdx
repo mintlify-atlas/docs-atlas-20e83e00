@@ -1,0 +1,362 @@
+---
+title: Jaspr vs Flutter Web
+description: Understanding the key differences between Jaspr and Flutter Web and when to use each
+---
+
+# Jaspr vs Flutter Web
+
+Both Jaspr and Flutter Web use Dart, but they take fundamentally different approaches to building web applications. This guide will help you understand when to use each.
+
+## The Fundamental Difference
+
+<CardGroup cols={2}>
+  <Card title="Flutter Web" icon="mobile">
+    Renders to **Canvas** using CanvasKit or HTML renderer. Optimized for **Web Apps**.
+  </Card>
+  <Card title="Jaspr" icon="code">
+    Renders to **HTML and DOM**. Optimized for **Web Sites** and SEO-focused applications.
+  </Card>
+</CardGroup>
+
+## What Flutter Says
+
+The Flutter team has stated on multiple occasions:
+
+<Note>
+Flutter Web is for building **Web-Apps**, not **Web-Sites**.
+</Note>
+
+While Flutter Web is a great technology for sharing apps across multiple platforms including the web, it may not be suited for all types of websites that you want to build.
+
+## Design Principles
+
+Jaspr works by giving you the familiar look and feel of the Flutter framework while using native web technologies like HTML, the DOM, and CSS. Instead of trying to mirror every little thing from Flutter, Jaspr tries to give a general Flutter-y feeling by matching features where it makes sense **without compromising on the unique properties of the web platform**.
+
+<Tip>
+Jaspr embraces the differences between Flutter and the web to give you the best of both worlds.
+</Tip>
+
+## Key Differences
+
+### Rendering Approach
+
+<CodeGroup>
+```dart Flutter Web
+// Flutter paints pixels to canvas
+Container(
+  color: Colors.blue,
+  child: Text(
+    'Hello World',
+    style: TextStyle(fontSize: 24),
+  ),
+)
+
+// Renders to canvas, not accessible HTML
+```
+
+```dart Jaspr
+// Jaspr renders to native HTML
+div(
+  styles: Styles(
+    backgroundColor: Colors.blue,
+  ),
+  [
+    text('Hello World'),
+  ],
+)
+
+// Renders to: <div style="background-color: blue;">Hello World</div>
+```
+</CodeGroup>
+
+### SEO & Accessibility
+
+| Feature | Flutter Web | Jaspr |
+|---------|-------------|-------|
+| **Native HTML** | No (Canvas) | Yes |
+| **SEO-Friendly** | Limited | Excellent |
+| **Screen Readers** | Limited | Full support |
+| **Text Selection** | Custom implementation | Native |
+| **Search Engine Crawling** | Difficult | Natural |
+| **Server-Side Rendering** | No | Yes, built-in |
+
+<Warning>
+Flutter Web's canvas-based rendering makes it difficult for search engines to index content and for screen readers to parse the UI.
+</Warning>
+
+### Component Model
+
+Both frameworks share a similar component/widget model:
+
+<CodeGroup>
+```dart Flutter
+class MyWidget extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      child: Text('Hello'),
+    );
+  }
+}
+```
+
+```dart Jaspr
+class MyComponent extends StatelessComponent {
+  @override
+  Component build(BuildContext context) {
+    return div([
+      text('Hello'),
+    ]);
+  }
+}
+```
+</CodeGroup>
+
+<Note>
+If you know Flutter, you already know most of Jaspr! The component model works the same way.
+</Note>
+
+### Styling Approach
+
+This is where Jaspr and Flutter differ significantly:
+
+<CardGroup cols={2}>
+  <Card title="Flutter Web">
+    **Flutter Approach**: Style widgets with Dart code using widget properties.
+    
+    ```dart
+    Text(
+      'Styled Text',
+      style: TextStyle(
+        color: Colors.blue,
+        fontSize: 16,
+        fontWeight: FontWeight.bold,
+      ),
+    )
+    ```
+    
+    All styling is done in Dart with pre-built widgets from Material or Cupertino libraries.
+  </Card>
+  
+  <Card title="Jaspr">
+    **Jaspr Approach**: Style with CSS (inline, classes, or stylesheets).
+    
+    ```dart
+    // Inline styles
+    div(
+      styles: Styles(
+        color: Colors.blue,
+      ),
+      [text('Styled Text')],
+    )
+    
+    // Or CSS classes
+    div(
+      classes: 'my-class',
+      [text('Styled Text')],
+    )
+    ```
+    
+    Embraces web-native CSS and works with any CSS framework.
+  </Card>
+</CardGroup>
+
+### Why No Pre-styled Components?
+
+Jaspr deliberately does not provide pre-styled components like Flutter's Material or Cupertino libraries.
+
+**The reasoning:**
+
+1. **Native to the web**: CSS frameworks are well-established on the web (Bootstrap, Tailwind, Bulma, etc.)
+2. **Flexibility**: You can integrate any existing CSS framework or design system
+3. **Maintainability**: Avoiding the complexity of maintaining a large styled component library
+4. **Web standards**: Styling should follow web conventions, not mobile app conventions
+
+<Tip>
+You can easily integrate popular CSS frameworks with Jaspr. Check out the [Bulma example](https://playground.jaspr.site/?sample=bulma) on JasprPad.
+</Tip>
+
+### Text Styling
+
+Another key difference:
+
+<CodeGroup>
+```dart Flutter Web
+Text(
+  'Hello World',
+  style: TextStyle(
+    fontSize: 16,
+    color: Colors.blue,
+    fontWeight: FontWeight.bold,
+  ),
+)
+```
+
+```dart Jaspr
+// Styling via parent element (web-native approach)
+span(
+  styles: Styles(
+    fontSize: Unit.px(16),
+    color: Colors.blue,
+    fontWeight: FontWeight.bold,
+  ),
+  [text('Hello World')],
+)
+
+// Or via CSS class
+span(
+  classes: 'text-primary',
+  [text('Hello World')],
+)
+```
+</CodeGroup>
+
+<Note>
+`Text` in Jaspr receives only a `String` and nothing else. Styling is done through CSS on parent elements, which is native to the web and a better practice.
+</Note>
+
+## When to Use Each
+
+### Choose Flutter Web when:
+
+<CardGroup cols={2}>
+  <Card title="Cross-platform Apps" icon="mobile-screen">
+    You're building an app that needs to run on mobile, desktop, AND web with the exact same codebase
+  </Card>
+  <Card title="Complex Graphics" icon="palette">
+    You need custom painting, complex animations, or game-like interfaces
+  </Card>
+  <Card title="Pixel-Perfect UI" icon="ruler">
+    You need identical rendering across all platforms
+  </Card>
+  <Card title="Existing Flutter App" icon="arrow-right">
+    You already have a Flutter mobile app and want to deploy it to web
+  </Card>
+</CardGroup>
+
+### Choose Jaspr when:
+
+<CardGroup cols={2}>
+  <Card title="SEO is Critical" icon="magnifying-glass">
+    You need search engines to properly index your content (blogs, documentation, marketing sites)
+  </Card>
+  <Card title="Traditional Websites" icon="globe">
+    You're building a content-heavy website, not a web app
+  </Card>
+  <Card title="Fast Initial Load" icon="bolt">
+    You need fast time-to-interactive and optimal Core Web Vitals
+  </Card>
+  <Card title="Accessibility" icon="universal-access">
+    You need full native accessibility support for screen readers
+  </Card>
+  <Card title="Server-Side Rendering" icon="server">
+    You want built-in SSR without complex setup
+  </Card>
+  <Card title="Native Web Feel" icon="code">
+    You want your site to behave like a traditional website with native text selection, right-click, etc.
+  </Card>
+</CardGroup>
+
+## Use Case Examples
+
+### Perfect for Flutter Web:
+
+- Figma-like design tools
+- Games and interactive experiences
+- Data visualization dashboards
+- Admin panels
+- Cross-platform productivity apps
+
+### Perfect for Jaspr:
+
+- Company websites
+- Blogs and content sites
+- Documentation sites (like this one!)
+- E-commerce storefronts
+- Landing pages
+- Marketing websites
+- News and media sites
+
+## Performance Comparison
+
+| Metric | Flutter Web | Jaspr |
+|--------|-------------|-------|
+| **Bundle Size** | Large (1-2MB+) | Small (~100KB) |
+| **Initial Load** | Slow | Fast |
+| **Time to Interactive** | Slow | Fast |
+| **Runtime Performance** | Excellent | Excellent |
+| **Memory Usage** | Higher | Lower |
+| **Core Web Vitals** | Challenging | Excellent |
+
+<Tip>
+Check out the [Jaspr Benchmarks](https://jaspr-benchmarks.web.app) to see real-world performance comparisons.
+</Tip>
+
+## Can They Work Together?
+
+Yes! You can use both in different parts of your application:
+
+- Use **Jaspr** for your marketing website and documentation
+- Use **Flutter Web** for your app dashboard or interactive tools
+- Link between them seamlessly
+
+<Note>
+Jaspr even supports embedding Flutter widgets within Jaspr components using the `jaspr_flutter_embed` package for specialized use cases.
+</Note>
+
+## Migration Path
+
+### From Flutter Web to Jaspr
+
+If you're considering migrating:
+
+1. **Components translate easily**: `StatelessWidget` → `StatelessComponent`, `StatefulWidget` → `StatefulComponent`
+2. **Build methods are similar**: Same tree-building approach
+3. **Styling requires rework**: Move from widget styling to CSS
+4. **Navigation**: Use `jaspr_router` instead of Flutter's navigation
+5. **State management**: `jaspr_riverpod` works like Riverpod
+
+### From React/Vue to Jaspr
+
+If you're coming from other web frameworks:
+
+1. **Type safety**: Enjoy full compile-time type checking
+2. **Component model**: Similar to React components but with Dart
+3. **State management**: Built-in with `setState()` or use `jaspr_riverpod`
+4. **SSR**: Built-in, no Next.js or Nuxt required
+5. **Styling**: Use your existing CSS knowledge
+
+## Summary
+
+<CardGroup cols={2}>
+  <Card title="Flutter Web" icon="mobile">
+    **Best for**: Cross-platform apps, complex graphics, pixel-perfect UI
+    
+    **Trade-offs**: Larger bundle, slower load, limited SEO
+  </Card>
+  <Card title="Jaspr" icon="code">
+    **Best for**: Websites, content sites, SEO, accessibility, SSR
+    
+    **Trade-offs**: No pre-styled components, web-specific
+  </Card>
+</CardGroup>
+
+Both are excellent frameworks for Dart developers. Choose based on your specific use case:
+
+- Building an **app**? → Flutter Web
+- Building a **website**? → Jaspr
+
+<Tip>
+Still unsure? Try building a small prototype in both! Jaspr's quickstart takes less than 5 minutes, and you can use your Flutter knowledge immediately.
+</Tip>
+
+## Learn More
+
+<CardGroup cols={2}>
+  <Card title="Get Started with Jaspr" icon="rocket" href="/quickstart">
+    Install Jaspr and build your first website
+  </Card>
+  <Card title="JasprPad Playground" icon="play" href="https://playground.jaspr.site">
+    Try Jaspr in your browser without installation
+  </Card>
+</CardGroup>

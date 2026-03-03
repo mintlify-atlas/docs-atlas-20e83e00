@@ -1,0 +1,303 @@
+---
+title: Jaspr Options Configuration
+description: Configure Jaspr framework options for server and client applications.
+---
+
+Jaspr options are used to configure the framework for server-side rendering, client hydration, and global styles. Options are typically auto-generated but can also be manually configured.
+
+## Initialization
+
+Before calling `runApp()` on the server, you must initialize Jaspr with options:
+
+```dart
+import 'package:jaspr/jaspr.dart';
+import 'main.server.options.dart';
+
+void main() {
+  Jaspr.initializeApp(
+    options: defaultServerOptions,
+  );
+  
+  runApp(App());
+}
+```
+
+<Note>
+  The options file is automatically generated when you use features like `@client` components or `@css` styles. The file is typically named `<entrypoint>.server.options.dart`.
+</Note>
+
+## Jaspr.initializeApp()
+
+Initializes the Jaspr framework on the server with the provided configuration.
+
+### Signature
+
+```dart
+static void initializeApp({
+  ServerOptions options = const ServerOptions(),
+  bool useIsolates = false,
+  List<String> allowedPathSuffixes = const ['html', 'htm', 'xml'],
+})
+```
+
+<ParamField path="options" type="ServerOptions" default="const ServerOptions()">
+  The server options configuration. Usually the auto-generated `defaultServerOptions`.
+</ParamField>
+
+<ParamField path="useIsolates" type="bool" default="false">
+  Whether to use isolates for handling requests. This can improve performance for CPU-intensive operations.
+</ParamField>
+
+<ParamField path="allowedPathSuffixes" type="List<String>" default="['html', 'htm', 'xml']">
+  The file extensions that are allowed to be server-rendered. Used for static site generation.
+</ParamField>
+
+### Example
+
+```dart
+import 'package:jaspr/jaspr.dart';
+import 'main.server.options.dart';
+
+void main() {
+  Jaspr.initializeApp(
+    options: defaultServerOptions,
+    useIsolates: true, // Enable isolates for better performance
+    allowedPathSuffixes: ['html', 'htm', 'xml', 'rss'],
+  );
+  
+  runApp(App());
+}
+```
+
+## ServerOptions
+
+The `ServerOptions` class contains the configuration for server-side rendering.
+
+### Signature
+
+```dart
+final class ServerOptions {
+  const ServerOptions({
+    this.clientId,
+    this.clients,
+    this.styles,
+  });
+  
+  final String? clientId;
+  final Map<Type, ClientTarget>? clients;
+  final List<StyleRule> Function()? styles;
+}
+```
+
+<ParamField path="clientId" type="String">
+  An identifier for the client bundle. Auto-generated based on your project.
+</ParamField>
+
+<ParamField path="clients" type="Map<Type, ClientTarget>">
+  A map of component types to their client targets. This is populated from `@client` annotated components.
+</ParamField>
+
+<ParamField path="styles" type="List<StyleRule> Function()">
+  A function that returns global style rules. This is populated from `@css` annotated styles.
+</ParamField>
+
+<Warning>
+  **DO NOT USE DIRECTLY.** You should use the generated `defaultServerOptions` instead of creating `ServerOptions` manually.
+</Warning>
+
+## ClientTarget
+
+Defines the target configuration for a `@client` component.
+
+### Signature
+
+```dart
+final class ClientTarget<T extends Component> {
+  const ClientTarget(this.name, {this.params});
+  
+  final String name;
+  final Map<String, Object?> Function(T component)? params;
+}
+```
+
+<ParamField path="name" type="String">
+  The name/identifier of the client component.
+</ParamField>
+
+<ParamField path="params" type="Map<String, Object?> Function(T)">
+  Optional function to extract parameters from the component for serialization.
+</ParamField>
+
+<Warning>
+  **DO NOT USE DIRECTLY.** This is auto-generated for `@client` components.
+</Warning>
+
+## Generated Options File
+
+When you use `@client` components, Jaspr automatically generates an options file alongside your entry point.
+
+### File Location
+
+For a file `lib/main.dart`, the generated files are:
+- `lib/main.server.options.dart` - Server-side options
+- `lib/main.client.options.dart` - Client-side options (if applicable)
+
+### Example Generated File
+
+```dart
+// GENERATED FILE - DO NOT MODIFY BY HAND
+
+import 'package:jaspr/jaspr.dart';
+import 'components/counter.dart' as c0;
+import 'styles/app_styles.dart' as s0;
+
+final defaultServerOptions = ServerOptions(
+  clientId: 'my-app',
+  clients: {
+    c0.Counter: ClientTarget('counter', params: (c) => {
+      'initialValue': c.initialValue,
+    }),
+  },
+  styles: () => [
+    ...s0.appStyles,
+  ],
+);
+```
+
+## Manual Configuration
+
+While not recommended, you can manually create server options:
+
+```dart
+import 'package:jaspr/jaspr.dart';
+
+void main() {
+  Jaspr.initializeApp(
+    options: const ServerOptions(
+      // Manual configuration
+      clientId: 'my-custom-app',
+      // Note: clients and styles must be properly configured
+    ),
+  );
+  
+  runApp(App());
+}
+```
+
+<Warning>
+  Manual configuration is error-prone and not recommended. Always use the auto-generated options when possible.
+</Warning>
+
+## Checking Initialization
+
+You can check if Jaspr has been initialized:
+
+```dart
+if (Jaspr.isInitialized) {
+  print('Jaspr is ready!');
+} else {
+  print('Call Jaspr.initializeApp() first');
+}
+```
+
+## Options Access
+
+Access the current options (read-only):
+
+```dart
+final options = Jaspr.options;
+print('Client ID: ${options.clientId}');
+```
+
+## Build Configuration
+
+To generate the options file, ensure your `build.yaml` includes the Jaspr builder:
+
+```yaml
+targets:
+  $default:
+    builders:
+      jaspr_builder|options:
+        enabled: true
+      jaspr_builder|sync:
+        enabled: true
+```
+
+Then run:
+
+```bash
+dart run build_runner build
+```
+
+or during development:
+
+```bash
+jaspr serve
+```
+
+## Migration Notes
+
+### From v0.14 and Earlier
+
+In older versions of Jaspr, a single `jaspr_options.dart` file was generated. Starting from v0.22.0:
+
+- The options file is now generated as `<file>.server.options.dart` alongside the entry point
+- An additional `<file>.client.options.dart` is generated for client-side code
+- You must update your imports from `jaspr_options.dart` to `main.server.options.dart`
+
+**Old (v0.14 and earlier):**
+```dart
+import 'jaspr_options.dart';
+
+void main() {
+  Jaspr.initializeApp(options: defaultJasprOptions);
+  runApp(App());
+}
+```
+
+**New (v0.22.0+):**
+```dart
+import 'main.server.options.dart';
+
+void main() {
+  Jaspr.initializeApp(options: defaultServerOptions);
+  runApp(App());
+}
+```
+
+## Common Issues
+
+### "Jaspr was not initialized"
+
+This error occurs when you call `runApp()` without first calling `Jaspr.initializeApp()`.
+
+**Solution:**
+```dart
+void main() {
+  Jaspr.initializeApp(options: defaultServerOptions); // Add this
+  runApp(App());
+}
+```
+
+### Options File Not Generated
+
+If the options file is not being generated:
+
+1. Ensure you have `@client` components or other features that require code generation
+2. Run `dart run build_runner build` or `jaspr serve`
+3. Check that `jaspr_builder` is in your `dev_dependencies`
+
+### Import Errors
+
+If you see import errors for the generated file:
+
+1. Make sure you've run the build process
+2. Check that the path matches your entry point file name
+3. Clean and rebuild: `dart run build_runner clean && dart run build_runner build`
+
+## See Also
+
+- [runApp()](/api/server-client/run-app) - Running your Jaspr application
+- [@client Components](/api/utils/at_client) - Client component annotation
+- [@css Styles](/api/styling/css) - CSS-in-Dart styling
+- [Jaspr Lints](/api/config/linting) - Linting configuration

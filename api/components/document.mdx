@@ -1,0 +1,445 @@
+---
+title: Document
+description: API reference for Document component
+---
+
+## Overview
+
+`Document` is a special component for managing document-level elements like `<html>`, `<head>`, `<body>`, and their contents. It provides different factory constructors for various document manipulation scenarios.
+
+## Factory Constructors
+
+### Document() - Base Document
+
+```dart
+const Document({
+  String? title,
+  String? lang,
+  String? base,
+  String? charset,
+  String? viewport,
+  Map<String, String> meta = const {},
+  List<StyleRule> styles = const [],
+  List<Component> head = const [],
+  required Component body,
+})
+```
+
+Sets up a basic document structure at the root of your app and renders the main `<html>`, `<head>` and `<body>` tags.
+
+<ParamField path="title" type="String?">
+  Rendered as the `<title>` element in `<head>`.
+</ParamField>
+
+<ParamField path="lang" type="String?">
+  Set as the `lang` attribute on the `<html>` element.
+</ParamField>
+
+<ParamField path="base" type="String?" default="'/'">
+  Rendered as the `<base href="...">` element. Automatically normalized to start and end with `/`.
+</ParamField>
+
+<ParamField path="charset" type="String?" default="'utf-8'">
+  Rendered as a `<meta charset="...">` element in `<head>`.
+</ParamField>
+
+<ParamField path="viewport" type="String?" default="'width=device-width, initial-scale=1.0'">
+  Rendered as a `<meta name="viewport" content="...">` element.
+</ParamField>
+
+<ParamField path="meta" type="Map<String, String>" default="{}">
+  Additional meta tags rendered as `<meta name="key" content="value">` elements.
+</ParamField>
+
+<ParamField path="styles" type="List<StyleRule>" default="[]">
+  CSS styles rendered in a `<style>` element inside `<head>`.
+</ParamField>
+
+<ParamField path="head" type="List<Component>" default="[]">
+  Additional components rendered inside `<head>`.
+</ParamField>
+
+<ParamField path="body" type="Component" required>
+  The component rendered inside the `<body>` element.
+</ParamField>
+
+**Example:**
+
+```dart
+Document(
+  title: 'My App',
+  lang: 'en',
+  meta: {
+    'description': 'A Jaspr web application',
+    'keywords': 'jaspr, web, dart',
+  },
+  styles: [
+    css('body', [
+      Css.background(color: Colors.white),
+    ]),
+  ],
+  body: App(),
+)
+```
+
+### Document.template() - Template Document
+
+```dart
+const Document.template({
+  String name = 'index',
+  String attachTo = 'body',
+  required Component child,
+})
+```
+
+Loads an external `.template.html` file from the filesystem and attaches the provided child component to that template.
+
+<ParamField path="name" type="String" default="'index'">
+  Defines which template file to load: `web/<name>.template.html`.
+</ParamField>
+
+<ParamField path="attachTo" type="String" default="'body'">
+  CSS selector defining where to attach the child component in the loaded template.
+</ParamField>
+
+<ParamField path="child" type="Component" required>
+  The component to attach to the template.
+</ParamField>
+
+**Example:**
+
+```dart
+// Loads web/index.template.html and attaches App() to <body>
+Document.template(
+  child: App(),
+)
+
+// Loads web/custom.template.html and attaches to #app element
+Document.template(
+  name: 'custom',
+  attachTo: '#app',
+  child: App(),
+)
+```
+
+### Document.html() - HTML Attributes
+
+```dart
+const Document.html({
+  Map<String, String>? attributes,
+  Key? key,
+})
+```
+
+Attaches a set of attributes to the `<html>` element.
+
+This can be used at any point in the component tree and is supported both on the server during pre-rendering and on the client.
+
+<ParamField path="attributes" type="Map<String, String>?">
+  Attributes to attach to the `<html>` element.
+</ParamField>
+
+<ParamField path="key" type="Key?">
+  An optional key for the component.
+</ParamField>
+
+<Note>
+  Can be used multiple times. Deeper or latter mounted components will override duplicate attributes from other `Document.html()` components.
+</Note>
+
+**Example:**
+
+```dart
+Document.html(
+  attributes: {
+    'data-theme': 'dark',
+    'class': 'app-root',
+  },
+)
+```
+
+### Document.head() - Head Elements
+
+```dart
+const Document.head({
+  String? title,
+  Map<String, String>? meta,
+  List<Component>? children,
+  Key? key,
+})
+```
+
+Renders metadata and other elements inside the `<head>` of the document.
+
+Any children are pulled out of the normal rendering tree and rendered inside a special section of the `<head>` element. This is supported both on the server during pre-rendering and on the client.
+
+<ParamField path="title" type="String?">
+  Rendered as the `<title>` element.
+</ParamField>
+
+<ParamField path="meta" type="Map<String, String>?">
+  Meta tags rendered as `<meta name="key" content="value">` elements.
+</ParamField>
+
+<ParamField path="children" type="List<Component>?">
+  Additional components rendered inside `<head>`.
+</ParamField>
+
+<ParamField path="key" type="Key?">
+  An optional key for the component.
+</ParamField>
+
+**Override Behavior:**
+
+Elements rendered by nested `Document.head()` are overridden using this system:
+- Elements with an `id` override other elements with the same `id`
+- `<title>` and `<base>` elements override other `<title>` or `<base>` elements
+- `<meta>` elements override other `<meta>` elements with the same `name`
+
+<Note>
+  Can be used multiple times. Deeper or latter mounted components will override duplicate elements from other `Document.head()` components.
+</Note>
+
+**Example:**
+
+```dart
+// Parent component
+Parent(
+  children: [
+    Document.head(
+      title: 'My Title',
+      meta: {'description': 'My Page Description'},
+    ),
+    Child(
+      children: [
+        Document.head(
+          title: 'Nested Title',
+        ),
+      ],
+    ),
+  ],
+)
+
+// Results in:
+// <head>
+//   <title>Nested Title</title>
+//   <meta name="description" content="My Page Description">
+// </head>
+```
+
+### Document.body() - Body Attributes
+
+```dart
+const Document.body({
+  Map<String, String>? attributes,
+  Key? key,
+})
+```
+
+Attaches a set of attributes to the `<body>` element.
+
+This can be used at any point in the component tree and is supported both on the server during pre-rendering and on the client.
+
+<ParamField path="attributes" type="Map<String, String>?">
+  Attributes to attach to the `<body>` element.
+</ParamField>
+
+<ParamField path="key" type="Key?">
+  An optional key for the component.
+</ParamField>
+
+<Note>
+  Can be used multiple times. Deeper or latter mounted components will override duplicate attributes from other `Document.body()` components.
+</Note>
+
+**Example:**
+
+```dart
+Document.body(
+  attributes: {
+    'class': 'no-scroll',
+    'data-page': 'home',
+  },
+)
+```
+
+## Common Use Cases
+
+### Basic App Setup
+
+```dart
+import 'package:jaspr/jaspr.dart';
+
+class App extends StatelessComponent {
+  @override
+  Component build(BuildContext context) {
+    return Document(
+      title: 'My Jaspr App',
+      lang: 'en',
+      meta: {
+        'description': 'A modern web app built with Jaspr',
+        'author': 'Your Name',
+      },
+      body: HomePage(),
+    );
+  }
+}
+```
+
+### Dynamic Page Titles
+
+```dart
+class BlogPost extends StatelessComponent {
+  const BlogPost({required this.post, super.key});
+
+  final Post post;
+
+  @override
+  Component build(BuildContext context) {
+    return div([
+      Document.head(
+        title: post.title,
+        meta: {
+          'description': post.excerpt,
+          'author': post.author,
+        },
+      ),
+      article([
+        h1([text(post.title)]),
+        p([text(post.content)]),
+      ]),
+    ]);
+  }
+}
+```
+
+### SEO Metadata
+
+```dart
+class ProductPage extends StatelessComponent {
+  const ProductPage({required this.product, super.key});
+
+  final Product product;
+
+  @override
+  Component build(BuildContext context) {
+    return div([
+      Document.head(
+        title: '${product.name} - Buy Now',
+        meta: {
+          'description': product.description,
+          'keywords': product.tags.join(', '),
+        },
+        children: [
+          // Open Graph tags
+          meta(name: 'og:title', content: product.name),
+          meta(name: 'og:description', content: product.description),
+          meta(name: 'og:image', content: product.imageUrl),
+          meta(name: 'og:type', content: 'product'),
+          // Twitter Card tags
+          meta(name: 'twitter:card', content: 'summary_large_image'),
+          meta(name: 'twitter:title', content: product.name),
+        ],
+      ),
+      ProductDetails(product: product),
+    ]);
+  }
+}
+```
+
+### Dark Mode Toggle
+
+```dart
+class ThemeToggle extends StatefulComponent {
+  @override
+  State createState() => _ThemeToggleState();
+}
+
+class _ThemeToggleState extends State<ThemeToggle> {
+  bool isDark = false;
+
+  @override
+  Component build(BuildContext context) {
+    return div([
+      Document.html(
+        attributes: {'data-theme': isDark ? 'dark' : 'light'},
+      ),
+      button(
+        events: {
+          'click': (_) => setState(() => isDark = !isDark),
+        },
+        [text('Toggle Theme')],
+      ),
+    ]);
+  }
+}
+```
+
+### External Stylesheets and Scripts
+
+```dart
+Document(
+  title: 'App with External Resources',
+  head: [
+    // External stylesheet
+    link(rel: 'stylesheet', href: '/styles/theme.css'),
+    // Google Fonts
+    link(
+      rel: 'stylesheet',
+      href: 'https://fonts.googleapis.com/css2?family=Roboto:wght@400;700',
+    ),
+    // External script
+    script(src: '/scripts/analytics.js', defer: true, []),
+    // Favicon
+    link(rel: 'icon', type: 'image/png', href: '/favicon.png'),
+  ],
+  body: App(),
+)
+```
+
+### Using Custom Template
+
+```html
+<!-- web/index.template.html -->
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8">
+    <link rel="stylesheet" href="/styles/global.css">
+  </head>
+  <body>
+    <div id="app">
+      <!-- Jaspr will attach here -->
+    </div>
+    <script src="/scripts/polyfills.js"></script>
+  </body>
+</html>
+```
+
+```dart
+Document.template(
+  attachTo: '#app',
+  child: App(),
+)
+```
+
+## Platform Differences
+
+<Note>
+  The base `Document()` constructor and `Document.template()` are only available on the server. On the client, only `Document.html()`, `Document.head()`, and `Document.body()` are available.
+</Note>
+
+## Important Notes
+
+<Warning>
+  Only one root `Document` component (using the base constructor or template constructor) should exist in your application. Using multiple will result in an error.
+</Warning>
+
+<Info>
+  The `Document.head()`, `Document.html()`, and `Document.body()` factory constructors can be used anywhere in the component tree, including within child components deep in the hierarchy.
+</Info>
+
+## Related Components
+
+- [StatelessComponent](/api/components/stateless) - Base class for stateless components
+- [Router](/api/components/router) - For managing navigation and routes

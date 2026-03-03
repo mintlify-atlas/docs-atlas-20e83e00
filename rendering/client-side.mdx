@@ -1,0 +1,576 @@
+---
+title: Client-Side Rendering
+description: Client-side rendering and hydration in Jaspr for interactive components
+---
+
+Client-side rendering in Jaspr allows you to create interactive components that run in the browser. Using the `@client` annotation, you can mark specific components for client-side hydration while keeping the rest of your app server-rendered.
+
+## The @client Annotation
+
+Mark any component with `@client` to make it interactive in the browser:
+
+```dart
+import 'package:jaspr/jaspr.dart';
+
+@client
+class Counter extends StatefulComponent {
+  const Counter();
+  
+  @override
+  State<Counter> createState() => _CounterState();
+}
+
+class _CounterState extends State<Counter> {
+  int count = 0;
+  
+  @override
+  Component build(BuildContext context) {
+    return div([
+      p([.text('Count: $count')]),
+      button(
+        onClick: () => setState(() => count++),
+        [.text('Increment')],
+      ),
+    ]);
+  }
+}
+```
+
+<Note>
+Client components are **server-rendered first** (for SEO and fast initial load), then **hydrated** in the browser to add interactivity.
+</Note>
+
+## How Hydration Works
+
+Jaspr's hydration process follows these steps:
+
+<Steps>
+  <Step title="Server Renders Component">
+    The server pre-renders the client component to HTML, including special markers:
+    
+    ```html
+    <!--$:Counter:eyJpbml0aWFsQ291bnQiOjB9-->
+    <div>
+      <p>Count: 0</p>
+      <button>Increment</button>
+    </div>
+    <!--/$:Counter-->
+    ```
+  </Step>
+  
+  <Step title="Browser Loads Page">
+    The HTML is displayed immediately - users see content before JavaScript loads.
+  </Step>
+  
+  <Step title="ClientApp Initializes">
+    The `ClientApp` component scans the DOM for client component markers.
+  </Step>
+  
+  <Step title="Components Hydrate">
+    Each client component is mounted and "hydrated" - the existing DOM is reused and event listeners are attached.
+  </Step>
+</Steps>
+
+## Client Entry Point
+
+Create a client entry point (typically `lib/main.client.dart`):
+
+```dart lib/main.client.dart
+import 'package:jaspr/client.dart';
+
+void main() {
+  Jaspr.initializeApp(
+    options: defaultClientOptions,
+  );
+  
+  runApp(ClientApp());
+}
+```
+
+### ClientApp Component
+
+The `ClientApp` component is required for hydrating client components:
+
+```dart
+import 'package:jaspr/client.dart';
+
+runApp(ClientApp());
+```
+
+**Source:** `packages/jaspr/lib/src/client/client_app.dart:23`
+
+This component:
+- Locates all `@client` components in the DOM
+- Initializes them with their parameters
+- Manages their lifecycle
+
+<Warning>
+You must wrap your root app with `ClientApp()` for client components to hydrate properly.
+</Warning>
+
+## Client Configuration
+
+The `Jaspr.initializeApp()` method on the client accepts options:
+
+```dart
+Jaspr.initializeApp(
+  options: ClientOptions(
+    // Optional initialization callback
+    initialize: () {
+      print('Client app initialized');
+    },
+    
+    // Map of client component names to loaders
+    clients: {
+      'Counter': ClientLoader(
+        (params) => Counter(),
+      ),
+      'TodoList': ClientLoader(
+        (params) => TodoList(items: params['items']),
+        loader: () async {
+          // Lazy-load dependencies
+          await loadTodoListDependencies();
+        },
+      ),
+    },
+  ),
+);
+```
+
+<Note>
+In practice, use the auto-generated `defaultClientOptions` instead of manually creating client options.
+</Note>
+
+### ClientOptions
+
+**Source:** `packages/jaspr/lib/src/client/options.dart:26`
+
+```dart
+class ClientOptions {
+  const ClientOptions({
+    this.initialize,
+    this.clients = const {},
+  });
+  
+  final void Function()? initialize;
+  final Map<String, ClientLoader> clients;
+}
+```
+
+### ClientLoader
+
+**Source:** `packages/jaspr/lib/src/client/options.dart:37`
+
+Loaders handle async initialization and lazy loading:
+
+```dart
+class ClientLoader {
+  ClientLoader(this.builder, {this.loader});
+  
+  final Future<void> Function()? loader;
+  final ClientBuilder builder;
+}
+
+typedef ClientBuilder = Component Function(Map<String, dynamic> params);
+```
+
+## Passing Parameters
+
+Pass data from server to client components:
+
+<Tabs>
+  <Tab title="Simple Parameters">
+    ```dart
+    @client
+    class UserCard extends StatelessComponent {
+      const UserCard({required this.name, required this.email});
+      
+      final String name;
+      final String email;
+      
+      @override
+      Component build(BuildContext context) {
+        return div([
+          h3([.text(name)]),
+          p([.text(email)]),
+        ]);
+      }
+    }
+    
+    // Usage in server component:
+    UserCard(name: 'Alice', email: 'alice@example.com')
+    ```
+    
+    Parameters are JSON-encoded and embedded in the HTML, then decoded on the client.
+  </Tab>
+  
+  <Tab title="Complex Objects">
+    ```dart
+    // Define your model
+    class User {
+      final String name;
+      final String email;
+      final int age;
+      
+      User({required this.name, required this.email, required this.age});
+      
+      Map<String, dynamic> toJson() => {
+        'name': name,
+        'email': email,
+        'age': age,
+      };
+      
+      factory User.fromJson(Map<String, dynamic> json) => User(
+        name: json['name'],
+        email: json['email'],
+        age: json['age'],
+      );
+    }
+    
+    @client
+    class UserProfile extends StatelessComponent {
+      const UserProfile({required this.user});
+      
+      final User user;
+      
+      @override
+      Component build(BuildContext context) {
+        return div([
+          h2([.text(user.name)]),
+          p([.text('${user.email} - Age: ${user.age}')]),
+        ]);
+      }
+    }
+    ```
+    
+    <Note>
+    Use `@encoder` and `@decoder` annotations or ensure your classes have `toJson()` and `fromJson()` methods.
+    </Note>
+  </Tab>
+</Tabs>
+
+## Client-Only Features
+
+### Browser APIs
+
+Access browser APIs safely:
+
+```dart
+import 'package:jaspr/jaspr.dart';
+
+@Import.onWeb('dart:html', show: [#window, #document])
+import 'my_component.imports.dart';
+
+@client
+class BrowserInfo extends StatelessComponent {
+  @override
+  Component build(BuildContext context) {
+    String userAgent = '';
+    
+    if (kIsWeb) {
+      userAgent = window.navigator.userAgent;
+    }
+    
+    return div([
+      p([.text('User Agent: $userAgent')]),
+    ]);
+  }
+}
+```
+
+### Event Handlers
+
+Attach event handlers to interactive elements:
+
+<CodeGroup>
+```dart Click Events
+@client
+class ClickCounter extends StatefulComponent {
+  @override
+  State createState() => _ClickCounterState();
+}
+
+class _ClickCounterState extends State<ClickCounter> {
+  int clicks = 0;
+  
+  @override
+  Component build(BuildContext context) {
+    return button(
+      onClick: () {
+        setState(() => clicks++);
+        print('Button clicked $clicks times');
+      },
+      [.text('Clicks: $clicks')],
+    );
+  }
+}
+```
+
+```dart Input Events
+@client
+class SearchBox extends StatefulComponent {
+  @override
+  State createState() => _SearchBoxState();
+}
+
+class _SearchBoxState extends State<SearchBox> {
+  String query = '';
+  
+  @override
+  Component build(BuildContext context) {
+    return div([
+      input(
+        value: query,
+        onInput: (value) {
+          setState(() => query = value);
+        },
+        [],
+      ),
+      p([.text('Searching for: $query')]),
+    ]);
+  }
+}
+```
+
+```dart Form Events
+@client
+class LoginForm extends StatefulComponent {
+  @override
+  State createState() => _LoginFormState();
+}
+
+class _LoginFormState extends State<LoginForm> {
+  String email = '';
+  String password = '';
+  
+  void handleSubmit(Event event) {
+    event.preventDefault();
+    print('Logging in with $email');
+  }
+  
+  @override
+  Component build(BuildContext context) {
+    return form(
+      onSubmit: handleSubmit,
+      [
+        input(
+          type: InputType.email,
+          value: email,
+          onInput: (v) => setState(() => email = v),
+          [],
+        ),
+        input(
+          type: InputType.password,
+          value: password,
+          onInput: (v) => setState(() => password = v),
+          [],
+        ),
+        button(type: ButtonType.submit, [.text('Login')]),
+      ],
+    );
+  }
+}
+```
+</CodeGroup>
+
+### Streams and Futures
+
+Use async data sources in client components:
+
+<Tabs>
+  <Tab title="StreamBuilder">
+    ```dart
+    @client
+    class RealtimeCounter extends StatelessComponent {
+      @override
+      Component build(BuildContext context) {
+        return StreamBuilder(
+          stream: Stream.periodic(
+            Duration(seconds: 1),
+            (count) => count,
+          ),
+          builder: (context, snapshot) {
+            return div([
+              .text('Count: ${snapshot.data ?? 0}'),
+            ]);
+          },
+        );
+      }
+    }
+    ```
+  </Tab>
+  
+  <Tab title="FutureBuilder">
+    ```dart
+    @client
+    class AsyncData extends StatelessComponent {
+      @override
+      Component build(BuildContext context) {
+        return FutureBuilder(
+          future: fetchDataFromAPI(),
+          builder: (context, snapshot) {
+            if (snapshot.hasError) {
+              return div([.text('Error: ${snapshot.error}')]);
+            }
+            
+            if (!snapshot.hasData) {
+              return div([.text('Loading...')]);
+            }
+            
+            return div([.text('Data: ${snapshot.data}')]);
+          },
+        );
+      }
+    }
+    ```
+  </Tab>
+</Tabs>
+
+<Warning>
+When using `StreamBuilder` or `FutureBuilder` on the server, pass `null` for the stream/future to avoid server-side execution. Use `kIsWeb` to conditionally provide the stream/future:
+
+```dart
+StreamBuilder(
+  stream: kIsWeb ? myStream : null,
+  builder: (context, snapshot) { ... },
+)
+```
+</Warning>
+
+## Lifecycle Hooks
+
+Client components support standard Jaspr lifecycle methods:
+
+```dart
+@client
+class LifecycleExample extends StatefulComponent {
+  @override
+  State createState() => _LifecycleExampleState();
+}
+
+class _LifecycleExampleState extends State<LifecycleExample> {
+  @override
+  void initState() {
+    super.initState();
+    print('Component initialized');
+  }
+  
+  @override
+  void didMount() {
+    super.didMount();
+    print('Component mounted to DOM');
+  }
+  
+  @override
+  void didUpdateComponent(LifecycleExample oldComponent) {
+    super.didUpdateComponent(oldComponent);
+    print('Component updated');
+  }
+  
+  @override
+  void dispose() {
+    print('Component disposed');
+    super.dispose();
+  }
+  
+  @override
+  Component build(BuildContext context) {
+    return div([.text('Lifecycle example')]);
+  }
+}
+```
+
+## Optimization
+
+### Lazy Loading
+
+Lazy-load client component code:
+
+```dart
+ClientLoader(
+  (params) => HeavyComponent(),
+  loader: () async {
+    // Load dependencies before initializing
+    await Future.delayed(Duration(milliseconds: 100));
+    print('Heavy component dependencies loaded');
+  },
+)
+```
+
+### Conditional Client Components
+
+Only hydrate components when needed:
+
+```dart
+class ConditionalInteractive extends StatelessComponent {
+  const ConditionalInteractive({required this.isInteractive});
+  
+  final bool isInteractive;
+  
+  @override
+  Component build(BuildContext context) {
+    if (isInteractive) {
+      return InteractiveButton();
+    }
+    return StaticButton();
+  }
+}
+
+@client
+class InteractiveButton extends StatelessComponent {
+  // Only this component loads client-side code
+}
+
+class StaticButton extends StatelessComponent {
+  // No client-side code needed
+}
+```
+
+## API Reference
+
+### runApp()
+
+**Source:** `packages/jaspr/lib/src/client/run_app.dart:5`
+
+```dart
+ClientAppBinding runApp(Component app, {String attachTo = 'body'})
+```
+
+Attaches the client app to the DOM. The `attachTo` parameter specifies the CSS selector to attach to.
+
+### ClientAppBinding
+
+**Source:** `packages/jaspr/lib/src/client/client_binding.dart:12`
+
+The binding that manages client-side component rendering and DOM updates.
+
+## Best Practices
+
+<CardGroup cols={2}>
+  <Card title="Minimize Client Components" icon="minimize">
+    Only mark components as `@client` when they need interactivity. Keep as much as possible server-rendered for better SEO and performance.
+  </Card>
+  
+  <Card title="Pass Minimal Data" icon="database">
+    Only pass the data needed for initial render. Fetch additional data on the client if needed.
+  </Card>
+  
+  <Card title="Handle Loading States" icon="spinner">
+    Always handle loading and error states in async components.
+  </Card>
+  
+  <Card title="Use kIsWeb Guard" icon="shield">
+    Guard browser-specific code with `if (kIsWeb)` to prevent server-side errors.
+  </Card>
+</CardGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Server-Side Rendering" icon="server" href="/rendering/server-side">
+    Learn about server-side rendering and async components
+  </Card>
+  <Card title="Static Site Generation" icon="file" href="/rendering/static-sites">
+    Pre-render pages with client-side interactivity
+  </Card>
+</CardGroup>

@@ -1,0 +1,675 @@
+---
+title: jaspr build
+description: Build optimized production-ready Jaspr applications with server executables, static sites, and WebAssembly support
+---
+
+The `jaspr build` command compiles your Jaspr project for production deployment, generating optimized assets and executables.
+
+## Basic Usage
+
+```bash
+jaspr build
+```
+
+The build output is located in `build/jaspr/` and varies based on your project's rendering mode.
+
+<CodeGroup>
+```bash Server Mode
+$ jaspr build
+
+[CLI] Building jaspr for server rendering mode.
+[CLI] Building web assets...
+[CLIENT] Compiling with dart2js...
+[CLIENT] Compiled main.dart.js (12.3s)
+[CLI] Completed building web assets.
+[CLI] Building server app...
+[SERVER] Compiling to executable...
+[CLI] Completed building project to /build/jaspr.
+```
+
+```bash Static Mode
+$ jaspr build
+
+[CLI] Building jaspr for static rendering mode.
+[CLI] Building web assets...
+[CLIENT] Compiled main.dart.js (11.8s)
+[CLI] Completed building web assets.
+[CLI] Generating static site...
+[CLI] Running server app...
+[CLI] Generating routes...
+[CLI] Generating route "/" (1/3)...
+[CLI] Generating route "/about" (2/3)...
+[CLI] Generating route "/contact" (3/3)...
+[CLI] Completed building project to /build/jaspr.
+```
+
+```bash Client Mode
+$ jaspr build
+
+[CLI] Building jaspr for client rendering mode.
+[CLI] Building web assets...
+[CLIENT] Compiling with dart2js...
+[CLIENT] Compiled main.dart.js (10.2s)
+[CLI] Completed building project to /build/jaspr.
+```
+</CodeGroup>
+
+## Output Structure
+
+The build output varies by rendering mode:
+
+<Tabs>
+  <Tab title="Server Mode">
+    ```
+    build/jaspr/
+    ├── app.exe              # Server executable (or app.aot, app on Linux/macOS)
+    └── web/                 # Client assets
+        ├── index.html
+        ├── main.dart.js     # Compiled JavaScript
+        ├── styles.css
+        └── assets/
+    ```
+    
+    **Deployment:**
+    1. Copy entire `build/jaspr/` directory to your server
+    2. Run the executable: `./app` (or `app.exe` on Windows)
+    3. Set `PORT` environment variable as needed
+  </Tab>
+  
+  <Tab title="Static Mode">
+    ```
+    build/jaspr/
+    ├── index.html           # Pre-rendered pages
+    ├── about/
+    │   └── index.html
+    ├── contact/
+    │   └── index.html
+    ├── main.dart.js         # Client JavaScript
+    ├── styles.css
+    ├── sitemap.xml          # Generated sitemap (if configured)
+    └── assets/
+    ```
+    
+    **Deployment:**
+    - Serve the entire `build/jaspr/` directory as static files
+    - Compatible with any static hosting (Netlify, Vercel, GitHub Pages, etc.)
+  </Tab>
+  
+  <Tab title="Client Mode">
+    ```
+    build/jaspr/
+    ├── index.html
+    ├── main.dart.js         # Compiled application
+    ├── styles.css
+    └── assets/
+    ```
+    
+    **Deployment:**
+    - Serve as static files
+    - Configure server to route all requests to `index.html` for client-side routing
+  </Tab>
+</Tabs>
+
+## Server Build Options
+
+These options apply when building in server mode:
+
+<ParamField path="--input" type="string">
+  Specify the server entry point file. Must end in `.server.dart`.
+  
+  ```bash
+  jaspr build --input lib/custom.server.dart
+  ```
+  
+  Defaults to:
+  1. `lib/main.server.dart`
+  2. First `*.server.dart` file in `bin/`
+  3. First `*.server.dart` file in `lib/`
+</ParamField>
+
+<ParamField path="--target" type="option" default="exe">
+  Specify the compilation target for the server executable.
+  
+  **Options:**
+  - `exe` - Self-contained executable
+  - `aot-snapshot` - AOT snapshot (requires Dart runtime)
+  - `jit-snapshot` - JIT snapshot (requires Dart runtime)
+  
+  ```bash
+  jaspr build --target aot-snapshot
+  ```
+</ParamField>
+
+<Tabs>
+  <Tab title="Executable (exe)">
+    Compiles to a standalone executable.
+    
+    ```bash
+    jaspr build --target exe
+    ```
+    
+    **Pros:**
+    - No Dart runtime required
+    - Single file deployment
+    - Fastest startup time
+    
+    **Output:** `build/jaspr/app.exe` (Windows) or `build/jaspr/app` (Linux/macOS)
+  </Tab>
+  
+  <Tab title="AOT Snapshot">
+    Compiles to an ahead-of-time compiled snapshot.
+    
+    ```bash
+    jaspr build --target aot-snapshot
+    ```
+    
+    **Pros:**
+    - Smaller file size
+    - Fast execution
+    
+    **Cons:**
+    - Requires Dart runtime on target system
+    
+    **Run:** `dart run build/jaspr/app.aot`
+  </Tab>
+  
+  <Tab title="JIT Snapshot">
+    Compiles to a just-in-time snapshot.
+    
+    ```bash
+    jaspr build --target jit-snapshot
+    ```
+    
+    **Pros:**
+    - Very small file size
+    - Fastest compilation
+    
+    **Cons:**
+    - Requires Dart runtime
+    - Slower startup than AOT
+    
+    **Run:** `dart run build/jaspr/app.jit`
+  </Tab>
+</Tabs>
+
+### Cross-Compilation
+
+<ParamField path="--target-os" type="option">
+  Compile for a specific operating system.
+  
+  **Options:** `linux`, `macos`, `windows`
+  
+  ```bash
+  jaspr build --target-os linux
+  ```
+  
+  <Warning>
+  Only available with `--target exe` or `--target aot-snapshot`.
+  </Warning>
+</ParamField>
+
+<ParamField path="--target-arch" type="option">
+  Compile for a specific CPU architecture.
+  
+  **Options:** `arm`, `arm64`, `riscv64`, `x64`
+  
+  ```bash
+  jaspr build --target-arch arm64
+  ```
+</ParamField>
+
+<CodeGroup>
+```bash Linux ARM64
+# Build for Linux ARM64 from any platform
+jaspr build \
+  --target exe \
+  --target-os linux \
+  --target-arch arm64
+```
+
+```bash Windows x64
+# Build for Windows x64 from macOS
+jaspr build \
+  --target exe \
+  --target-os windows \
+  --target-arch x64
+```
+</CodeGroup>
+
+## Web Compilation Options
+
+<ParamField path="--optimize" type="option" default="2">
+  Set the dart2js/dart2wasm optimization level.
+  
+  **Options:**
+  - `0` - No optimizations (debugging only)
+  - `1` - Basic optimizations and inlining
+  - `2` - **Production optimizations** (recommended)
+  - `3` - Potentially unsafe optimizations
+  - `4` - Aggressive unsafe optimizations
+  
+  ```bash
+  jaspr build --optimize 3
+  ```
+</ParamField>
+
+<Tabs>
+  <Tab title="Level 0">
+    No optimizations - for compiler debugging only.
+    
+    ```bash
+    jaspr build -O0
+    ```
+    
+    **Use:** Only when debugging the Dart compiler itself
+  </Tab>
+  
+  <Tab title="Level 1">
+    Basic whole-program analysis and inlining.
+    
+    ```bash
+    jaspr build -O1
+    ```
+    
+    **Use:** Development builds with some optimization
+  </Tab>
+  
+  <Tab title="Level 2 (Default)">
+    Safe production optimizations including minification.
+    
+    ```bash
+    jaspr build -O2
+    ```
+    
+    **Use:** **Recommended for production**
+  </Tab>
+  
+  <Tab title="Level 3">
+    Aggressive optimizations that may change behavior.
+    
+    ```bash
+    jaspr build -O3
+    ```
+    
+    **Use:** When you need maximum performance and have tested thoroughly
+  </Tab>
+  
+  <Tab title="Level 4">
+    Maximum optimization with potential breaking changes.
+    
+    ```bash
+    jaspr build -O4
+    ```
+    
+    **Use:** Experimental - test carefully
+  </Tab>
+</Tabs>
+
+<ParamField path="--experimental-wasm" type="flag" default="false">
+  Compile to WebAssembly instead of JavaScript.
+  
+  ```bash
+  jaspr build --experimental-wasm
+  ```
+  
+  **Output:** `main.dart.wasm` instead of `main.dart.js`
+  
+  <Warning>
+  WebAssembly support is experimental. Ensure browser compatibility.
+  </Warning>
+</ParamField>
+
+<ParamField path="--include-source-maps" type="flag" default="false">
+  Include source maps and Dart source files in the build output.
+  
+  ```bash
+  jaspr build --include-source-maps
+  ```
+  
+  Useful for debugging production issues, but increases bundle size.
+</ParamField>
+
+## Static Site Generation
+
+These options apply when building in static mode:
+
+<ParamField path="--sitemap-domain" type="string">
+  Generate a `sitemap.xml` file with the specified domain.
+  
+  ```bash
+  jaspr build --sitemap-domain example.com
+  ```
+  
+  Output includes:
+  ```xml
+  <?xml version="1.0" encoding="UTF-8"?>
+  <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+    <url>
+      <loc>https://example.com/</loc>
+      <lastmod>2026-03-03T10:30:00Z</lastmod>
+      <priority>0.5</priority>
+    </url>
+    ...
+  </urlset>
+  ```
+</ParamField>
+
+<ParamField path="--sitemap-exclude" type="string">
+  Regex pattern of routes to exclude from the sitemap.
+  
+  ```bash
+  jaspr build \
+    --sitemap-domain example.com \
+    --sitemap-exclude "^/admin|^/api"
+  ```
+  
+  Excludes routes matching the pattern from `sitemap.xml`.
+</ParamField>
+
+### Sitemap Configuration
+
+Control sitemap generation from your components:
+
+```dart lib/pages/home.dart
+import 'package:jaspr/jaspr.dart';
+
+class HomePage extends StatelessComponent {
+  @override
+  Iterable<Component> build(BuildContext context) sync* {
+    // Configure sitemap for this route
+    yield Head(
+      metaTags: [
+        // Exclude from sitemap
+        Meta(name: 'jaspr:sitemap', content: 'false'),
+        
+        // Or configure sitemap properties
+        Meta(name: 'jaspr:sitemap:priority', content: '0.8'),
+        Meta(name: 'jaspr:sitemap:changefreq', content: 'daily'),
+      ],
+    );
+    
+    yield Text('Home Page');
+  }
+}
+```
+
+## Build Configuration
+
+<ParamField path="--managed-build-options" type="flag" default="true">
+  Let Jaspr manage build_runner configuration automatically.
+  
+  ```bash
+  # Manually configure build options in build.yaml
+  jaspr build --no-managed-build-options
+  ```
+  
+  Disable to manually configure builders.
+</ParamField>
+
+## Dart Defines
+
+Pass compile-time constants to your application:
+
+<ParamField path="--dart-define" type="string">
+  Define environment variables for both client and server.
+  
+  ```bash
+  jaspr build --dart-define=API_URL=https://api.example.com
+  ```
+</ParamField>
+
+<ParamField path="--dart-define-from-file" type="string">
+  Load dart-define variables from a JSON file.
+  
+  ```bash
+  jaspr build --dart-define-from-file=prod-config.json
+  ```
+  
+  ```json prod-config.json
+  {
+    "API_URL": "https://api.example.com",
+    "ANALYTICS_ID": "UA-123456-1",
+    "FEATURE_FLAGS": "premium,analytics"
+  }
+  ```
+</ParamField>
+
+Access in your code:
+
+```dart
+const apiUrl = String.fromEnvironment('API_URL', 
+  defaultValue: 'http://localhost:8080');
+```
+
+## Complete Examples
+
+<CodeGroup>
+```bash Production Server Build
+# Optimized server build with environment config
+jaspr build \
+  --target exe \
+  --optimize 2 \
+  --dart-define-from-file=prod-config.json
+```
+
+```bash Static Site with Sitemap
+# Generate static site with SEO sitemap
+jaspr build \
+  --sitemap-domain example.com \
+  --sitemap-exclude "^/admin"
+```
+
+```bash Cross-Platform Build
+# Build for Linux ARM64 from macOS
+jaspr build \
+  --target exe \
+  --target-os linux \
+  --target-arch arm64
+```
+
+```bash WebAssembly Build
+# Experimental WASM compilation
+jaspr build \
+  --experimental-wasm \
+  --optimize 3
+```
+
+```bash Debug Build
+# Include source maps for production debugging
+jaspr build \
+  --include-source-maps \
+  --optimize 1
+```
+
+```bash Minimal Client Build
+# Smallest possible client-side bundle
+jaspr build \
+  --optimize 4
+```
+</CodeGroup>
+
+## Deployment Guides
+
+<AccordionGroup>
+  <Accordion title="Server Mode Deployment">
+    Deploy the built server executable:
+    
+    <Steps>
+      <Step title="Build the application">
+        ```bash
+        jaspr build --target exe
+        ```
+      </Step>
+      
+      <Step title="Copy to server">
+        ```bash
+        scp -r build/jaspr/ user@server:/var/www/app/
+        ```
+      </Step>
+      
+      <Step title="Run the executable">
+        ```bash
+        cd /var/www/app
+        PORT=80 ./app
+        ```
+      </Step>
+    </Steps>
+    
+    **Environment variables:**
+    - `PORT` - Server port (default: 8080)
+    - Any custom variables passed via `--dart-define`
+  </Accordion>
+
+  <Accordion title="Static Site Deployment">
+    Deploy to static hosting:
+    
+    <Tabs>
+      <Tab title="Netlify">
+        ```toml netlify.toml
+        [build]
+          command = "dart pub global activate jaspr_cli && jaspr build"
+          publish = "build/jaspr"
+        ```
+      </Tab>
+      
+      <Tab title="Vercel">
+        ```json vercel.json
+        {
+          "buildCommand": "dart pub global activate jaspr_cli && jaspr build",
+          "outputDirectory": "build/jaspr"
+        }
+        ```
+      </Tab>
+      
+      <Tab title="GitHub Pages">
+        ```yaml .github/workflows/deploy.yml
+        name: Deploy
+        on:
+          push:
+            branches: [main]
+        jobs:
+          build:
+            runs-on: ubuntu-latest
+            steps:
+              - uses: actions/checkout@v3
+              - uses: dart-lang/setup-dart@v1
+              - run: dart pub global activate jaspr_cli
+              - run: dart pub get
+              - run: jaspr build
+              - uses: peaceiris/actions-gh-pages@v3
+                with:
+                  github_token: ${{ secrets.GITHUB_TOKEN }}
+                  publish_dir: ./build/jaspr
+        ```
+      </Tab>
+    </Tabs>
+  </Accordion>
+
+  <Accordion title="Docker Deployment">
+    Containerize your server application:
+    
+    ```dockerfile Dockerfile
+    FROM dart:stable AS build
+    
+    WORKDIR /app
+    COPY pubspec.* ./
+    RUN dart pub get
+    
+    COPY . .
+    RUN dart pub global activate jaspr_cli
+    RUN jaspr build --target exe
+    
+    FROM scratch
+    COPY --from=build /app/build/jaspr/ /app/
+    
+    EXPOSE 8080
+    CMD ["/app/app"]
+    ```
+    
+    Build and run:
+    ```bash
+    docker build -t my-jaspr-app .
+    docker run -p 8080:8080 my-jaspr-app
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Build Performance
+
+<Tip>
+**Optimize build times:**
+
+- Use `--target aot-snapshot` for faster compilation than `exe`
+- Skip source maps in production: don't use `--include-source-maps`
+- Use `--optimize 2` for best balance of speed and size
+- Enable parallel builds with build_runner (configured by default)
+</Tip>
+
+**Typical build times:**
+- Client mode: 10-15 seconds
+- Server mode: 15-25 seconds (exe), 10-15 seconds (aot-snapshot)
+- Static mode: 20-40 seconds (depends on number of routes)
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Build fails with errors">
+    Clean build artifacts and rebuild:
+    
+    ```bash
+    dart run build_runner clean
+    jaspr build
+    ```
+  </Accordion>
+
+  <Accordion title="Large bundle size">
+    Check your optimization level:
+    
+    ```bash
+    jaspr build --optimize 2
+    ```
+    
+    Analyze bundle size:
+    ```bash
+    ls -lh build/jaspr/web/main.dart.js
+    ```
+  </Accordion>
+
+  <Accordion title="Cross-compilation fails">
+    Ensure you're using a compatible target:
+    
+    ```bash
+    # Only exe and aot-snapshot support cross-compilation
+    jaspr build --target exe --target-os linux
+    ```
+  </Accordion>
+
+  <Accordion title="Static generation incomplete">
+    Check that all routes are discovered:
+    
+    - Ensure routes are linked from the home page
+    - Check server logs for errors during generation
+    - Use `--verbose` for detailed output
+    
+    ```bash
+    jaspr build --verbose
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Deployment" icon="rocket" href="/going-further/deployment">
+    Learn about deploying Jaspr applications
+  </Card>
+  <Card title="Production Tips" icon="sparkles" href="/going-further/production">
+    Optimize for production environments
+  </Card>
+  <Card title="Serve Command" icon="play" href="/cli/serve">
+    Learn about the development server
+  </Card>
+  <Card title="Docker" icon="docker" href="/going-further/docker">
+    Containerize your application
+  </Card>
+</CardGroup>

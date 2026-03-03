@@ -1,0 +1,414 @@
+---
+title: Headers, Cookies & Status Codes
+description: Access and modify HTTP headers, cookies, and response status codes in server-side components.
+---
+
+When rendering on the server, you can access request headers and cookies, and modify response headers, cookies, and status codes through the `BuildContext` extension.
+
+<Note>
+  These APIs are **only available on the server**. They will throw an error if called on the client.
+</Note>
+
+## Reading Request Data
+
+### headers
+
+Access HTTP headers from the current request with case-insensitive keys.
+
+```dart
+Map<String, String> get headers
+```
+
+If a header occurs more than once, they are concatenated with a comma.
+
+**Example:**
+```dart
+Builder(
+  builder: (context) {
+    final userAgent = context.headers['user-agent'];
+    final acceptLanguage = context.headers['accept-language'];
+    
+    return div([], [
+      text('User Agent: $userAgent'),
+      text('Language: $acceptLanguage'),
+    ]);
+  },
+)
+```
+
+### headersAll
+
+Access HTTP headers with multiple values.
+
+```dart
+Map<String, List<String>> get headersAll
+```
+
+If a header occurs only once, its value is a singleton list. If a header occurs with no value, the empty string is used.
+
+**Example:**
+```dart
+Builder(
+  builder: (context) {
+    final acceptHeaders = context.headersAll['accept'];
+    
+    return div([], [
+      text('Accept headers: ${acceptHeaders?.join(", ")}'),
+    ]);
+  },
+)
+```
+
+### cookies
+
+Access cookies sent with the current request.
+
+```dart
+Map<String, String> get cookies
+```
+
+**Example:**
+```dart
+Builder(
+  builder: (context) {
+    final sessionId = context.cookies['session_id'];
+    final theme = context.cookies['theme'] ?? 'light';
+    
+    return div([], [
+      text('Session: $sessionId'),
+      text('Theme: $theme'),
+    ]);
+  },
+)
+```
+
+### url
+
+Access the URL of the current request.
+
+```dart
+String get url
+```
+
+**Example:**
+```dart
+Builder(
+  builder: (context) {
+    final currentUrl = context.url;
+    
+    return div([], [
+      text('Current URL: $currentUrl'),
+    ]);
+  },
+)
+```
+
+## Modifying Response Data
+
+### setHeader()
+
+Set a response header.
+
+```dart
+void setHeader(String name, String value)
+```
+
+<ParamField path="name" type="String" required>
+  The name of the header.
+</ParamField>
+
+<ParamField path="value" type="String" required>
+  The value of the header.
+</ParamField>
+
+**Example:**
+```dart
+Builder(
+  builder: (context) {
+    // Set custom headers
+    context.setHeader('X-Custom-Header', 'MyValue');
+    context.setHeader('Cache-Control', 'max-age=3600');
+    
+    return div([], [text('Headers set!')]);
+  },
+)
+```
+
+### setCookie()
+
+Set a cookie in the response.
+
+```dart
+void setCookie(
+  String name,
+  String value, {
+  DateTime? expires,
+  int? maxAge,
+  String? domain,
+  String? path,
+  bool secure = false,
+  bool httpOnly = true,
+  SameSite? sameSite,
+})
+```
+
+<ParamField path="name" type="String" required>
+  The name of the cookie. Must be composed of valid characters according to RFC 6265.
+</ParamField>
+
+<ParamField path="value" type="String" required>
+  The value of the cookie. Must be composed of valid characters according to RFC 6265.
+</ParamField>
+
+<ParamField path="expires" type="DateTime">
+  The time at which the cookie expires.
+</ParamField>
+
+<ParamField path="maxAge" type="int">
+  The number of seconds until the cookie expires. A zero or negative value means the cookie has expired.
+</ParamField>
+
+<ParamField path="domain" type="String">
+  The domain that the cookie applies to.
+</ParamField>
+
+<ParamField path="path" type="String">
+  The path within the domain that the cookie applies to.
+</ParamField>
+
+<ParamField path="secure" type="bool" default="false">
+  Whether to only send this cookie on secure (HTTPS) connections.
+</ParamField>
+
+<ParamField path="httpOnly" type="bool" default="true">
+  Whether the cookie is only sent in HTTP requests and is not accessible to client-side scripts.
+</ParamField>
+
+<ParamField path="sameSite" type="SameSite">
+  Controls whether the cookie is sent with cross-site requests. Values: `SameSite.strict`, `SameSite.lax`, or `SameSite.none`.
+</ParamField>
+
+**Example:**
+```dart
+import 'dart:io'; // For SameSite
+
+Builder(
+  builder: (context) {
+    // Set a simple cookie
+    context.setCookie('theme', 'dark');
+    
+    // Set a cookie with options
+    context.setCookie(
+      'session_id',
+      'abc123xyz',
+      maxAge: 3600, // 1 hour
+      path: '/',
+      secure: true,
+      httpOnly: true,
+      sameSite: SameSite.strict,
+    );
+    
+    // Set a cookie with expiration date
+    context.setCookie(
+      'remember_me',
+      'true',
+      expires: DateTime.now().add(Duration(days: 30)),
+      path: '/',
+    );
+    
+    return div([], [text('Cookies set!')]);
+  },
+)
+```
+
+### setStatusCode()
+
+Set the response status code.
+
+```dart
+void setStatusCode(int statusCode, {Object? responseBody})
+```
+
+<ParamField path="statusCode" type="int" required>
+  The HTTP status code (e.g., 200, 404, 500).
+</ParamField>
+
+<ParamField path="responseBody" type="String | Uint8List">
+  Optional response body to send instead of the rendered HTML. Supported types are `String` and `Uint8List`.
+</ParamField>
+
+**Example:**
+```dart
+Builder(
+  builder: (context) {
+    // Set a custom status code
+    context.setStatusCode(201);
+    
+    return div([], [text('Created!')]);
+  },
+)
+```
+
+### Custom Response Body
+
+You can override the rendered HTML and send a custom response:
+
+```dart
+import 'dart:convert';
+
+Builder(
+  builder: (context) {
+    // Check if this is an API request
+    if (context.url.startsWith('/api/')) {
+      // Return JSON instead of HTML
+      context.setStatusCode(
+        200,
+        responseBody: jsonEncode({
+          'status': 'ok',
+          'data': {'message': 'Hello, API!'}
+        }),
+      );
+      context.setHeader('Content-Type', 'application/json');
+    }
+    
+    return div([], [text('Normal HTML response')]);
+  },
+)
+```
+
+**Binary Response:**
+```dart
+import 'dart:typed_data';
+
+Builder(
+  builder: (context) {
+    if (context.url == '/image') {
+      final imageBytes = Uint8List.fromList([/* ... */]);
+      context.setStatusCode(200, responseBody: imageBytes);
+      context.setHeader('Content-Type', 'image/png');
+    }
+    
+    return div([], [text('Page')]);
+  },
+)
+```
+
+## Complete Example
+
+```dart
+import 'dart:io';
+import 'package:jaspr/jaspr.dart';
+
+class AuthenticatedPage extends StatelessComponent {
+  @override
+  Component build(BuildContext context) {
+    // Check for authentication cookie
+    final authToken = context.cookies['auth_token'];
+    
+    if (authToken == null) {
+      // No auth token - redirect to login
+      context.setStatusCode(302);
+      context.setHeader('Location', '/login');
+      
+      return div([], [text('Redirecting to login...')]);
+    }
+    
+    // Validate token (simplified)
+    if (!isValidToken(authToken)) {
+      context.setStatusCode(401);
+      
+      return div([], [
+        h1([], [text('Unauthorized')]),
+        p([], [text('Your session has expired.')]),
+      ]);
+    }
+    
+    // Get user info from headers
+    final userAgent = context.headers['user-agent'] ?? 'Unknown';
+    final acceptLanguage = context.headers['accept-language'] ?? 'en';
+    
+    // Set custom response headers
+    context.setHeader('X-Frame-Options', 'DENY');
+    context.setHeader('X-Content-Type-Options', 'nosniff');
+    
+    // Refresh the auth cookie
+    context.setCookie(
+      'auth_token',
+      authToken,
+      maxAge: 3600,
+      httpOnly: true,
+      secure: true,
+      sameSite: SameSite.strict,
+    );
+    
+    return div([], [
+      h1([], [text('Welcome!')]),
+      p([], [text('Browser: $userAgent')]),
+      p([], [text('Language: $acceptLanguage')]),
+    ]);
+  }
+  
+  bool isValidToken(String token) {
+    // Token validation logic
+    return token.isNotEmpty;
+  }
+}
+```
+
+## Use Cases
+
+### Authentication & Authorization
+
+```dart
+final token = context.cookies['auth_token'];
+if (token == null) {
+  context.setStatusCode(401);
+  return LoginPrompt();
+}
+```
+
+### Redirects
+
+```dart
+context.setStatusCode(302);
+context.setHeader('Location', '/new-location');
+```
+
+### Content Negotiation
+
+```dart
+final accept = context.headers['accept'];
+if (accept?.contains('application/json') ?? false) {
+  context.setStatusCode(200, responseBody: jsonEncode(data));
+  context.setHeader('Content-Type', 'application/json');
+}
+```
+
+### Custom Caching
+
+```dart
+context.setHeader('Cache-Control', 'public, max-age=31536000');
+context.setHeader('ETag', generateETag(content));
+```
+
+### Session Management
+
+```dart
+context.setCookie(
+  'session_id',
+  generateSessionId(),
+  maxAge: 3600,
+  httpOnly: true,
+  sameSite: SameSite.strict,
+);
+```
+
+<Warning>
+  These APIs only work on the server. If you try to use them in a client-rendered component (e.g., inside a `@client` component), they will throw an error.
+</Warning>
+
+## See Also
+
+- [Server Rendering](/dev/server) - Learn more about server-side rendering
+- [runApp()](/api/server-client/run-app) - Server entry point
+- [Router](/api/components/router) - Handle routing and redirects

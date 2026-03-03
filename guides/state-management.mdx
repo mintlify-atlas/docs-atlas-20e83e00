@@ -1,0 +1,636 @@
+---
+title: State management
+description: Learn different patterns for managing state in Jaspr applications
+---
+
+Jaspr provides multiple approaches to state management, from built-in solutions to third-party libraries like Riverpod.
+
+## Component state
+
+### StatefulComponent
+
+The simplest form of state management using `StatefulComponent`:
+
+```dart
+import 'package:jaspr/jaspr.dart';
+
+class Counter extends StatefulComponent {
+  @override
+  State<Counter> createState() => _CounterState();
+}
+
+class _CounterState extends State<Counter> {
+  int count = 0;
+  
+  void increment() {
+    setState(() {
+      count++;
+    });
+  }
+  
+  @override
+  Component build(BuildContext context) {
+    return div([
+      text('Count: $count'),
+      button(onClick: (e) => increment(), [text('Increment')]),
+    ]);
+  }
+}
+```
+
+<Note>
+Use `StatefulComponent` for:
+- UI-specific state (form inputs, toggles)
+- Temporary state that doesn't need to be shared
+- Simple counters, timers, or animations
+</Note>
+
+### When to use component state
+
+✅ **Good use cases:**
+- Form field values
+- Dropdown open/closed state
+- Tab selection
+- Loading indicators
+
+❌ **Not ideal for:**
+- User authentication state
+- Shopping cart data
+- Theme preferences
+- Data fetched from APIs
+
+## Lifting state up
+
+Share state between components by moving it to a common ancestor:
+
+```dart
+class ShoppingApp extends StatefulComponent {
+  @override
+  State<ShoppingApp> createState() => _ShoppingAppState();
+}
+
+class _ShoppingAppState extends State<ShoppingApp> {
+  List<Product> cart = [];
+  
+  void addToCart(Product product) {
+    setState(() {
+      cart.add(product);
+    });
+  }
+  
+  void removeFromCart(Product product) {
+    setState(() {
+      cart.remove(product);
+    });
+  }
+  
+  @override
+  Component build(BuildContext context) {
+    return div([
+      ProductList(onAdd: addToCart),
+      Cart(
+        items: cart,
+        onRemove: removeFromCart,
+      ),
+    ]);
+  }
+}
+```
+
+## InheritedComponent
+
+Share state down the component tree efficiently:
+
+```dart
+import 'package:jaspr/jaspr.dart';
+
+class ThemeData {
+  final Color primaryColor;
+  final Color backgroundColor;
+  
+  const ThemeData({
+    required this.primaryColor,
+    required this.backgroundColor,
+  });
+}
+
+class Theme extends InheritedComponent {
+  final ThemeData data;
+  
+  const Theme({
+    required this.data,
+    required super.child,
+  });
+  
+  static ThemeData of(BuildContext context) {
+    final theme = context.dependOnInheritedComponentOfExactType<Theme>();
+    if (theme == null) {
+      throw StateError('No Theme found in context');
+    }
+    return theme.data;
+  }
+  
+  @override
+  bool updateShouldNotify(Theme oldComponent) {
+    return data != oldComponent.data;
+  }
+}
+```
+
+Usage:
+
+```dart
+class App extends StatelessComponent {
+  @override
+  Component build(BuildContext context) {
+    return Theme(
+      data: ThemeData(
+        primaryColor: Color.hex('#01589B'),
+        backgroundColor: Colors.white,
+      ),
+      child: HomePage(),
+    );
+  }
+}
+
+class ThemedButton extends StatelessComponent {
+  final String label;
+  
+  const ThemedButton({required this.label});
+  
+  @override
+  Component build(BuildContext context) {
+    final theme = Theme.of(context);
+    
+    return button(
+      [text(label)],
+      styles: Styles(
+        background: Background(color: theme.primaryColor),
+        color: Colors.white,
+      ),
+    );
+  }
+}
+```
+
+<Tip>
+`InheritedComponent` is perfect for:
+- Theme configuration
+- User authentication state
+- Locale/language settings
+- App-wide configuration
+</Tip>
+
+## State with InheritedNotifier
+
+Combine `InheritedComponent` with `ChangeNotifier` for reactive state:
+
+```dart
+import 'package:jaspr/jaspr.dart';
+
+class CartModel extends ChangeNotifier {
+  final List<Product> _items = [];
+  
+  List<Product> get items => List.unmodifiable(_items);
+  
+  int get itemCount => _items.length;
+  
+  double get total => _items.fold(0, (sum, item) => sum + item.price);
+  
+  void add(Product product) {
+    _items.add(product);
+    notifyListeners();
+  }
+  
+  void remove(Product product) {
+    _items.remove(product);
+    notifyListeners();
+  }
+  
+  void clear() {
+    _items.clear();
+    notifyListeners();
+  }
+}
+
+class CartProvider extends InheritedNotifier<CartModel> {
+  const CartProvider({
+    required CartModel cart,
+    required super.child,
+  }) : super(notifier: cart);
+  
+  static CartModel of(BuildContext context) {
+    final provider = context.dependOnInheritedComponentOfExactType<CartProvider>();
+    if (provider == null) {
+      throw StateError('No CartProvider found in context');
+    }
+    return provider.notifier!;
+  }
+}
+```
+
+Setup and usage:
+
+```dart
+class App extends StatefulComponent {
+  @override
+  State<App> createState() => _AppState();
+}
+
+class _AppState extends State<App> {
+  final cart = CartModel();
+  
+  @override
+  Component build(BuildContext context) {
+    return CartProvider(
+      cart: cart,
+      child: HomePage(),
+    );
+  }
+}
+
+class CartButton extends StatelessComponent {
+  @override
+  Component build(BuildContext context) {
+    final cart = CartProvider.of(context);
+    
+    return button([
+      text('Cart (${cart.itemCount})'),
+    ]);
+  }
+}
+```
+
+## Riverpod integration
+
+Use `jaspr_riverpod` for advanced state management:
+
+### Installation
+
+```yaml pubspec.yaml
+dependencies:
+  jaspr: ^0.22.0
+  jaspr_riverpod: ^0.4.0
+```
+
+### Provider setup
+
+```dart
+import 'package:jaspr/jaspr.dart';
+import 'package:jaspr_riverpod/jaspr_riverpod.dart';
+
+// State notifier
+class CounterNotifier extends StateNotifier<int> {
+  CounterNotifier() : super(0);
+  
+  void increment() => state++;
+  void decrement() => state--;
+  void reset() => state = 0;
+}
+
+// Provider
+final counterProvider = StateNotifierProvider<CounterNotifier, int>((ref) {
+  return CounterNotifier();
+});
+```
+
+### Using providers
+
+```dart
+class App extends StatelessComponent {
+  @override
+  Component build(BuildContext context) {
+    return ProviderScope(
+      child: CounterPage(),
+    );
+  }
+}
+
+class CounterPage extends StatelessComponent {
+  @override
+  Component build(BuildContext context) {
+    final count = context.watch(counterProvider);
+    
+    return div([
+      h1([text('Counter: $count')]),
+      button(
+        onClick: (e) => context.read(counterProvider.notifier).increment(),
+        [text('Increment')],
+      ),
+      button(
+        onClick: (e) => context.read(counterProvider.notifier).decrement(),
+        [text('Decrement')],
+      ),
+      button(
+        onClick: (e) => context.read(counterProvider.notifier).reset(),
+        [text('Reset')],
+      ),
+    ]);
+  }
+}
+```
+
+### Async providers
+
+Fetch data with `FutureProvider`:
+
+```dart
+import 'package:jaspr_riverpod/jaspr_riverpod.dart';
+
+final userProvider = FutureProvider.family<User, String>((ref, userId) async {
+  final response = await fetch('/api/users/$userId');
+  return User.fromJson(response);
+});
+
+class UserProfile extends StatelessComponent {
+  final String userId;
+  
+  const UserProfile({required this.userId});
+  
+  @override
+  Component build(BuildContext context) {
+    final userAsync = context.watch(userProvider(userId));
+    
+    return userAsync.when(
+      data: (user) => div([
+        h1([text(user.name)]),
+        p([text(user.email)]),
+      ]),
+      loading: () => div([text('Loading...')]),
+      error: (error, stack) => div([
+        text('Error: $error'),
+      ]),
+    );
+  }
+}
+```
+
+### Server-to-client state sync
+
+Unique to jaspr_riverpod - automatically sync provider state from server to client:
+
+```dart
+import 'package:jaspr_riverpod/jaspr_riverpod.dart';
+
+// Server loads data, client receives it automatically
+final productsProvider = FutureProvider<List<Product>>((ref) async {
+  // Runs on server during SSR
+  final products = await database.getProducts();
+  return products;
+});
+
+class ProductList extends StatelessComponent {
+  @override
+  Component build(BuildContext context) {
+    // On server: fetches from database
+    // On client: receives synced data from server
+    final productsAsync = context.watch(productsProvider);
+    
+    return productsAsync.when(
+      data: (products) => div(
+        products.map((p) => ProductCard(product: p)).toList(),
+      ),
+      loading: () => div([text('Loading products...')]),
+      error: (e, _) => div([text('Failed to load products')]),
+    );
+  }
+}
+```
+
+<Warning>
+Server-to-client sync only works for providers accessed during SSR. Client-only providers won't sync.
+</Warning>
+
+## Choosing a state management approach
+
+<Tabs>
+  <Tab title="Component State">
+    **Best for:** Simple, local UI state
+    
+    ✅ Advantages:
+    - No dependencies
+    - Simple and straightforward
+    - Built into Jaspr
+    
+    ❌ Disadvantages:
+    - Hard to share between components
+    - Can lead to prop drilling
+    - Difficult to test in isolation
+  </Tab>
+  
+  <Tab title="InheritedComponent">
+    **Best for:** App-wide configuration and theme
+    
+    ✅ Advantages:
+    - Efficient updates
+    - Built into Jaspr
+    - Good for read-heavy data
+    
+    ❌ Disadvantages:
+    - Boilerplate code
+    - Manual notification handling
+    - Can be complex for beginners
+  </Tab>
+  
+  <Tab title="Riverpod">
+    **Best for:** Complex apps with async data
+    
+    ✅ Advantages:
+    - Powerful and flexible
+    - Great async support
+    - Server-to-client sync
+    - Compile-time safety
+    - Easy testing
+    
+    ❌ Disadvantages:
+    - Additional dependency
+    - Learning curve
+    - More concepts to understand
+  </Tab>
+</Tabs>
+
+## Best practices
+
+<AccordionGroup>
+  <Accordion title="Keep state as low as possible">
+    Only lift state up when multiple components need access. Keep it local when possible.
+  </Accordion>
+  
+  <Accordion title="Use const constructors">
+    Make components with const constructors to optimize rebuilds:
+    
+    ```dart
+    class ProductCard extends StatelessComponent {
+      final Product product;
+      
+      const ProductCard({required this.product}); // const constructor
+      
+      // ...
+    }
+    ```
+  </Accordion>
+  
+  <Accordion title="Avoid rebuilding the entire tree">
+    Use `Builder` or split components to limit rebuild scope:
+    
+    ```dart
+    // Instead of rebuilding everything:
+    class BadExample extends StatefulComponent {
+      // Everything rebuilds on any state change
+    }
+    
+    // Split into smaller components:
+    class GoodExample extends StatelessComponent {
+      // Only specific parts rebuild
+    }
+    ```
+  </Accordion>
+  
+  <Accordion title="Dispose resources properly">
+    Always clean up in `dispose()`:
+    
+    ```dart
+    @override
+    void dispose() {
+      _controller.dispose();
+      _subscription.cancel();
+      super.dispose();
+    }
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Complete example
+
+Here's a complete shopping cart example using Riverpod:
+
+```dart
+import 'package:jaspr/jaspr.dart';
+import 'package:jaspr_riverpod/jaspr_riverpod.dart';
+
+// Models
+class Product {
+  final String id;
+  final String name;
+  final double price;
+  
+  const Product({required this.id, required this.name, required this.price});
+}
+
+class CartItem {
+  final Product product;
+  final int quantity;
+  
+  const CartItem({required this.product, required this.quantity});
+}
+
+// Providers
+final productsProvider = Provider<List<Product>>((ref) {
+  return [
+    Product(id: '1', name: 'Widget', price: 9.99),
+    Product(id: '2', name: 'Gadget', price: 19.99),
+    Product(id: '3', name: 'Doohickey', price: 14.99),
+  ];
+});
+
+class CartNotifier extends StateNotifier<List<CartItem>> {
+  CartNotifier() : super([]);
+  
+  void addProduct(Product product) {
+    final existingIndex = state.indexWhere((item) => item.product.id == product.id);
+    
+    if (existingIndex >= 0) {
+      state = [
+        ...state.sublist(0, existingIndex),
+        CartItem(
+          product: product,
+          quantity: state[existingIndex].quantity + 1,
+        ),
+        ...state.sublist(existingIndex + 1),
+      ];
+    } else {
+      state = [...state, CartItem(product: product, quantity: 1)];
+    }
+  }
+  
+  void removeProduct(String productId) {
+    state = state.where((item) => item.product.id != productId).toList();
+  }
+  
+  double get total {
+    return state.fold(0, (sum, item) => sum + (item.product.price * item.quantity));
+  }
+}
+
+final cartProvider = StateNotifierProvider<CartNotifier, List<CartItem>>((ref) {
+  return CartNotifier();
+});
+
+// Components
+class App extends StatelessComponent {
+  @override
+  Component build(BuildContext context) {
+    return ProviderScope(
+      child: ShoppingPage(),
+    );
+  }
+}
+
+class ShoppingPage extends StatelessComponent {
+  @override
+  Component build(BuildContext context) {
+    final products = context.watch(productsProvider);
+    final cart = context.watch(cartProvider);
+    
+    return div([
+      h1([text('Shop')]),
+      div(
+        products.map((product) {
+          return div([
+            text('${product.name} - \$${product.price}'),
+            button(
+              onClick: (e) => context.read(cartProvider.notifier).addProduct(product),
+              [text('Add to Cart')],
+            ),
+          ]);
+        }).toList(),
+      ),
+      h2([text('Cart (${cart.length} items)')]),
+      if (cart.isEmpty)
+        p([text('Your cart is empty')])
+      else
+        div([
+          ...cart.map((item) {
+            return div([
+              text('${item.product.name} x ${item.quantity} - \$${item.product.price * item.quantity}'),
+              button(
+                onClick: (e) => context.read(cartProvider.notifier).removeProduct(item.product.id),
+                [text('Remove')],
+              ),
+            ]);
+          }),
+          div([
+            text('Total: \$${context.read(cartProvider.notifier).total.toStringAsFixed(2)}'),
+          ]),
+        ]),
+    ]);
+  }
+}
+```
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="InheritedComponent" icon="share-nodes" href="/api/components/inherited">
+    InheritedComponent API reference
+  </Card>
+  <Card title="jaspr_riverpod" icon="plug" href="/plugins/riverpod">
+    Complete Riverpod integration guide
+  </Card>
+  <Card title="State mixin" icon="arrows-rotate" href="/api/server-client/sync-state">
+    Server-client state synchronization
+  </Card>
+  <Card title="Data fetching" icon="download" href="/concepts/data-fetching">
+    Loading data in components
+  </Card>
+</CardGroup>

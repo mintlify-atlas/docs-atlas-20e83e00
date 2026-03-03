@@ -1,0 +1,521 @@
+---
+title: Styling
+description: Learn how to style your components with the Styles class and CSS
+---
+
+Jaspr provides a type-safe, programmatic way to define CSS styles using the `Styles` class. This approach gives you autocomplete, type checking, and eliminates typos in CSS property names.
+
+## Inline Styles
+
+The most common way to style components is using the `Styles` class with inline styles:
+
+```dart
+import 'package:jaspr/jaspr.dart';
+import 'package:jaspr/dom.dart';
+
+div(
+  styles: Styles(
+    backgroundColor: Colors.blue,
+    padding: Padding.all(16.px),
+    margin: Margin.symmetric(
+      horizontal: 20.px,
+      vertical: 10.px,
+    ),
+    border: Border.all(
+      BorderSide(
+        color: Colors.grey,
+        width: 1.px,
+      ),
+    ),
+    radius: BorderRadius.all(Radius.circular(8.px)),
+  ),
+  [text('Styled content')],
+)
+```
+
+## The Styles Class
+
+The `Styles` class provides type-safe access to CSS properties:
+
+```dart
+Styles(
+  // Box Model
+  width: 200.px,
+  height: 100.px,
+  minWidth: 100.px,
+  maxWidth: 400.px,
+  padding: Padding.all(16.px),
+  margin: Margin.only(
+    top: 10.px,
+    bottom: 20.px,
+  ),
+  
+  // Display & Position
+  display: Display.flex,
+  position: Position.relative(),
+  
+  // Colors
+  color: Colors.black,
+  backgroundColor: Colors.white,
+  
+  // Text
+  fontSize: 16.px,
+  fontWeight: FontWeight.bold,
+  textAlign: TextAlign.center,
+  
+  // Borders
+  border: Border.all(BorderSide(color: Colors.grey, width: 1.px)),
+  radius: BorderRadius.circular(8.px),
+  
+  // Effects
+  opacity: 0.8,
+  shadow: BoxShadow(color: Colors.black.withAlpha(0.1)),
+  
+  // Raw CSS for anything not covered
+  raw: {
+    'custom-property': 'value',
+  },
+)
+```
+
+## Units
+
+Jaspr provides type-safe CSS units through extension methods on numbers:
+
+```dart
+// Length units
+width: 100.px,      // pixels
+height: 50.percent, // percentage
+fontSize: 1.5.rem,  // rem
+margin: 2.em,       // em
+
+// Viewport units
+width: 100.vw,      // viewport width
+height: 100.vh,     // viewport height
+
+// Other units
+width: 10.cm,       // centimeters
+width: 5.inches,    // inches
+```
+
+## Colors
+
+Define colors using the `Color` class:
+
+```dart
+// Named colors
+Colors.red
+Colors.blue
+Colors.green
+Colors.transparent
+
+// Hex colors
+Color.hex('#FF5733')
+Color.hex('FF5733')  // # is optional
+
+// RGB
+Color.rgb(255, 87, 51)
+
+// RGBA (with opacity)
+Color.rgba(255, 87, 51, 0.5)
+
+// HSL
+Color.hsl(9, 100, 60)
+
+// Modify colors
+Colors.blue.withAlpha(0.5)
+Colors.red.withOpacity(0.8)
+```
+
+## Layout
+
+### Flexbox
+
+```dart
+div(
+  styles: Styles(
+    display: Display.flex,
+    flexDirection: FlexDirection.row,
+    justifyContent: JustifyContent.spaceBetween,
+    alignItems: AlignItems.center,
+    gap: Gap.all(16.px),
+  ),
+  [/* children */],
+)
+```
+
+**Flexbox properties:**
+- `flexDirection` - row, column, rowReverse, columnReverse
+- `flexWrap` - wrap, nowrap, wrapReverse
+- `justifyContent` - flexStart, center, spaceBetween, spaceAround, spaceEvenly
+- `alignItems` - flexStart, center, flexEnd, stretch, baseline
+- `alignContent` - flexStart, center, flexEnd, spaceBetween, spaceAround, stretch
+- `gap` - spacing between flex items
+
+### Grid
+
+```dart
+div(
+  styles: Styles(
+    display: Display.grid,
+    gridTemplate: GridTemplate(
+      columns: [1.fr, 1.fr, 1.fr],
+      rows: [200.px, Unit.auto],
+    ),
+    gap: Gap.all(20.px),
+  ),
+  [/* grid items */],
+)
+```
+
+### Positioning
+
+```dart
+// Relative positioning
+Styles(
+  position: Position.relative(
+    top: 10.px,
+    left: 20.px,
+  ),
+)
+
+// Absolute positioning
+Styles(
+  position: Position.absolute(
+    top: 0.px,
+    right: 0.px,
+  ),
+)
+
+// Fixed positioning
+Styles(
+  position: Position.fixed(
+    bottom: 20.px,
+    right: 20.px,
+  ),
+)
+
+// Sticky positioning
+Styles(
+  position: Position.sticky(
+    top: 0.px,
+  ),
+)
+```
+
+## Box Model
+
+### Padding
+
+```dart
+// All sides
+padding: Padding.all(16.px)
+
+// Symmetric
+padding: Padding.symmetric(
+  horizontal: 20.px,
+  vertical: 10.px,
+)
+
+// Individual sides
+padding: Padding.only(
+  top: 10.px,
+  right: 15.px,
+  bottom: 10.px,
+  left: 15.px,
+)
+```
+
+### Margin
+
+```dart
+// Same API as Padding
+margin: Margin.all(16.px)
+margin: Margin.symmetric(horizontal: 20.px, vertical: 10.px)
+margin: Margin.only(top: 10.px, bottom: 20.px)
+
+// Auto centering
+margin: Margin.symmetric(horizontal: Unit.auto)
+```
+
+### Borders
+
+```dart
+// All sides
+border: Border.all(
+  BorderSide(
+    color: Colors.grey,
+    width: 2.px,
+    style: BorderStyle.solid,
+  ),
+)
+
+// Individual sides
+border: Border.only(
+  top: BorderSide(color: Colors.red, width: 1.px),
+  bottom: BorderSide(color: Colors.blue, width: 2.px),
+)
+
+// Border radius
+radius: BorderRadius.all(Radius.circular(8.px))
+radius: BorderRadius.circular(8.px)  // shorthand
+radius: BorderRadius.only(
+  topLeft: Radius.circular(10.px),
+  topRight: Radius.circular(10.px),
+)
+```
+
+## Typography
+
+```dart
+Styles(
+  // Font
+  fontFamily: FontFamily('Arial, sans-serif'),
+  fontSize: 16.px,
+  fontWeight: FontWeight.bold,  // or FontWeight.w700
+  fontStyle: FontStyle.italic,
+  
+  // Text layout
+  textAlign: TextAlign.center,
+  lineHeight: 1.5.em,
+  letterSpacing: 0.5.px,
+  wordSpacing: 2.px,
+  
+  // Text decoration
+  textDecoration: TextDecoration.underline,
+  textTransform: TextTransform.uppercase,
+  
+  // Text overflow
+  textOverflow: TextOverflow.ellipsis,
+  whiteSpace: WhiteSpace.nowrap,
+  
+  // Color
+  color: Colors.black,
+  
+  // Shadow
+  textShadow: TextShadow(
+    color: Colors.black.withAlpha(0.3),
+    offset: Offset(2.px, 2.px),
+    blur: 4.px,
+  ),
+)
+```
+
+## Effects
+
+### Shadows
+
+```dart
+// Box shadow
+shadow: BoxShadow(
+  color: Colors.black.withAlpha(0.2),
+  offset: Offset(0.px, 4.px),
+  blur: 8.px,
+  spread: 0.px,
+)
+
+// Multiple shadows
+shadow: BoxShadow.multi([
+  BoxShadow(color: Colors.black.withAlpha(0.1)),
+  BoxShadow(color: Colors.blue.withAlpha(0.2), offset: Offset(4.px, 4.px)),
+])
+```
+
+### Opacity & Visibility
+
+```dart
+opacity: 0.5              // 0.0 to 1.0
+visibility: Visibility.hidden
+visibility: Visibility.visible
+```
+
+### Transforms
+
+```dart
+transform: Transform.translate(x: 10.px, y: 20.px)
+transform: Transform.scale(1.2)
+transform: Transform.rotate(45.deg)
+```
+
+### Filters
+
+```dart
+filter: Filter.blur(5.px)
+filter: Filter.brightness(1.2)
+filter: Filter.grayscale(0.5)
+
+backdropFilter: Filter.blur(10.px)
+```
+
+## Animations & Transitions
+
+```dart
+// Transitions
+transition: Transition(
+  property: 'all',
+  duration: Duration(milliseconds: 300),
+  timingFunction: 'ease-in-out',
+)
+
+// Animations
+animation: Animation(
+  name: 'fadeIn',
+  duration: Duration(seconds: 1),
+  timingFunction: 'ease-out',
+  fillMode: 'forwards',
+)
+```
+
+## CSS Style Rules
+
+For more complex styling scenarios, use `StyleRule` to define CSS rules:
+
+```dart
+import 'package:jaspr/jaspr.dart';
+
+class MyApp extends StatelessComponent {
+  @override
+  Component build(BuildContext context) {
+    return Document(
+      styles: [
+        // Global styles
+        css('body')
+          .text(color: Colors.black)
+          .box(margin: Margin.zero, padding: Padding.zero)
+          .raw({'font-family': 'system-ui'}),
+        
+        // Class selector
+        css('.container')
+          .box(
+            maxWidth: 1200.px,
+            margin: Margin.symmetric(horizontal: Unit.auto),
+            padding: Padding.all(20.px),
+          ),
+        
+        // Hover state
+        css('button')
+          .background(color: Colors.blue)
+          .text(color: Colors.white)
+          .box(padding: Padding.symmetric(horizontal: 20.px, vertical: 10.px))
+          .hover(
+            background: Styles(color: Colors.blue700),
+          ),
+        
+        // Media queries
+        css('.responsive')
+          .box(width: 100.percent)
+          .media(
+            MediaQuery.screen(maxWidth: 768.px),
+            Styles(width: 50.percent),
+          ),
+      ],
+      body: MyComponent(),
+    );
+  }
+}
+```
+
+## Combining Styles
+
+Combine multiple `Styles` objects:
+
+```dart
+final baseStyles = Styles(
+  padding: Padding.all(16.px),
+  border: Border.all(BorderSide(color: Colors.grey)),
+);
+
+final specialStyles = Styles(
+  backgroundColor: Colors.blue,
+  color: Colors.white,
+);
+
+// Combine them
+final combined = Styles.combine([baseStyles, specialStyles]);
+
+// Or use the combine method
+final also = baseStyles.combine(specialStyles);
+```
+
+## Complete Example
+
+```dart
+import 'package:jaspr/jaspr.dart';
+import 'package:jaspr/dom.dart';
+
+class StyledCard extends StatelessComponent {
+  const StyledCard({
+    required this.title,
+    required this.content,
+    this.highlighted = false,
+    super.key,
+  });
+
+  final String title;
+  final String content;
+  final bool highlighted;
+
+  @override
+  Component build(BuildContext context) {
+    return article(
+      styles: Styles(
+        display: Display.flex,
+        flexDirection: FlexDirection.column,
+        gap: Gap.all(12.px),
+        padding: Padding.all(24.px),
+        backgroundColor: highlighted ? Colors.blue50 : Colors.white,
+        border: Border.all(
+          BorderSide(
+            color: highlighted ? Colors.blue : Colors.grey300,
+            width: 2.px,
+          ),
+        ),
+        radius: BorderRadius.circular(12.px),
+        shadow: BoxShadow(
+          color: Colors.black.withAlpha(0.1),
+          offset: Offset(0.px, 2.px),
+          blur: 8.px,
+        ),
+        transition: Transition(
+          property: 'all',
+          duration: Duration(milliseconds: 200),
+        ),
+      ),
+      [
+        h3(
+          styles: Styles(
+            margin: Margin.zero,
+            fontSize: 20.px,
+            fontWeight: FontWeight.bold,
+            color: highlighted ? Colors.blue900 : Colors.black,
+          ),
+          [text(title)],
+        ),
+        p(
+          styles: Styles(
+            margin: Margin.zero,
+            fontSize: 14.px,
+            lineHeight: 1.6.em,
+            color: Colors.grey700,
+          ),
+          [text(content)],
+        ),
+      ],
+    );
+  }
+}
+```
+
+## Related
+
+<CardGroup cols={2}>
+  <Card title="HTML Elements" icon="code" href="/concepts/html">
+    Learn about rendering HTML
+  </Card>
+  <Card title="Components" icon="puzzle-piece" href="/concepts/components">
+    Understand the component system
+  </Card>
+  <Card title="Theming" icon="palette" href="/features/theming">
+    Implement app-wide themes
+  </Card>
+</CardGroup>

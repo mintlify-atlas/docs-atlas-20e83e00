@@ -1,0 +1,421 @@
+---
+title: jaspr_lints Package
+description: Lints and code assists for Jaspr projects to improve code quality and developer experience.
+---
+
+The `jaspr_lints` package provides custom analyzer plugins with lints and code assists specifically designed for Jaspr projects.
+
+## Installation
+
+Add `jaspr_lints` to your `dev_dependencies` in `pubspec.yaml`:
+
+```yaml
+dev_dependencies:
+  jaspr_lints: ^0.6.0
+```
+
+Then run:
+
+```bash
+dart pub get
+```
+
+## Setup
+
+Configure the plugin in your `analysis_options.yaml`:
+
+```yaml
+include: package:jaspr_lints/jaspr_lints.yaml
+
+plugins:
+  jaspr_lints:
+    version: ^0.6.0
+    diagnostics:
+      sort_children_last: true
+      prefer_html_components: true
+      styles_ordering: true
+      prefer_styles_getter: true
+```
+
+<Note>
+  After adding or updating the configuration, restart your IDE or run `dart pub get` for the changes to take effect.
+</Note>
+
+## Lints
+
+All lints come with automatic fixes that can be applied via your IDE's quick fix menu (usually `Cmd/Ctrl + .` or lightbulb icon).
+
+### prefer_html_components
+
+Prefers HTML component functions like `div()`, `p()`, `button()` over the generic `Component.element()` constructor.
+
+**Bad:**
+```dart
+Component.element(tag: 'div', children: [
+  Component.element(tag: 'p', children: [text('Hello')]),
+])
+```
+
+**Good:**
+```dart
+div([], [
+  p([], [text('Hello')]),
+])
+```
+
+**Configuration:**
+```yaml
+plugins:
+  jaspr_lints:
+    diagnostics:
+      prefer_html_components: true
+```
+
+**Fix:** Automatic conversion to the corresponding HTML component function.
+
+---
+
+### sort_children_last
+
+Enforces that the `children` parameter (the unnamed list parameter) comes last in HTML component calls.
+
+**Bad:**
+```dart
+div([
+  text('Content'),
+], id: 'container', classes: 'box')
+```
+
+**Good:**
+```dart
+div(id: 'container', classes: 'box', [
+  text('Content'),
+])
+```
+
+**Configuration:**
+```yaml
+plugins:
+  jaspr_lints:
+    diagnostics:
+      sort_children_last: true
+```
+
+**Fix:** Automatically reorders parameters to place children last.
+
+---
+
+### styles_ordering
+
+Enforces alphabetical ordering of style properties in `Styles()` constructors and `styles()` function calls.
+
+**Bad:**
+```dart
+Styles(
+  padding: EdgeInsets.all(10),
+  margin: EdgeInsets.all(5),
+  backgroundColor: Colors.blue,
+)
+```
+
+**Good:**
+```dart
+Styles(
+  backgroundColor: Colors.blue,
+  margin: EdgeInsets.all(5),
+  padding: EdgeInsets.all(10),
+)
+```
+
+**Configuration:**
+```yaml
+plugins:
+  jaspr_lints:
+    diagnostics:
+      styles_ordering: true
+```
+
+**Fix:** Automatically sorts style properties alphabetically.
+
+---
+
+### prefer_styles_getter
+
+Prefers using a getter over a variable declaration for `@css` style rules to support hot-reload.
+
+**Bad:**
+```dart
+@css
+final appStyles = [
+  css('.container').box(width: 100.px),
+];
+```
+
+**Good:**
+```dart
+@css
+List<StyleRule> get appStyles => [
+  css('.container').box(width: 100.px),
+];
+```
+
+**Configuration:**
+```yaml
+plugins:
+  jaspr_lints:
+    diagnostics:
+      prefer_styles_getter: true
+```
+
+**Fix:** Automatically converts the variable to a getter.
+
+**Why?** Using a getter ensures that style rules are re-evaluated during hot-reload, providing a better development experience.
+
+## Code Assists
+
+Code assists appear in your IDE's quick fix menu when you place your cursor on relevant code.
+
+### Component Creation
+
+Create new components from scratch:
+
+- **Create StatelessComponent** - Generate a new stateless component class
+- **Create StatefulComponent** - Generate a new stateful component class with state
+- **Create InheritedComponent** - Generate a new inherited component for state sharing
+
+**Usage:** Place cursor on a class name or in an empty area and invoke code assist.
+
+---
+
+### Component Conversion
+
+Convert between component types:
+
+- **Convert StatelessComponent to StatefulComponent** - Adds state management
+- **Convert StatelessComponent to AsyncStatelessComponent** - Enables async build method
+
+**Usage:** Place cursor on the component class name.
+
+---
+
+### Component Tree Operations
+
+**Remove component from tree**
+
+Removes a component and optionally replaces it with its children.
+
+**Usage:** Place cursor on a component constructor.
+
+---
+
+**Wrap component**
+
+Wrap a component with another component:
+
+- Wrap with `div()`, `section()`, `ul()`, or any HTML component
+- Wrap with a custom component
+- Wrap with `Builder` for context access
+
+**Usage:** Place cursor on a component constructor.
+
+**Example:**
+```dart
+// Before
+text('Hello')
+
+// After wrapping with div
+div([], [
+  text('Hello'),
+])
+```
+
+---
+
+**Extract subtree into StatelessComponent**
+
+Extract a component subtree into a new reusable `StatelessComponent`.
+
+**Usage:** Select a component expression or place cursor on it.
+
+**Example:**
+```dart
+// Before
+div([], [
+  h1([], [text('Title')]),
+  p([], [text('Description')]),
+])
+
+// After extraction
+class Header extends StatelessComponent {
+  @override
+  Component build(BuildContext context) {
+    return div([], [
+      h1([], [text('Title')]),
+      p([], [text('Description')]),
+    ]);
+  }
+}
+```
+
+---
+
+### Styling
+
+**Add styles to HTML component**
+
+Quickly add a `styles` parameter to an HTML component.
+
+**Usage:** Place cursor on an HTML component like `div()` or `p()`.
+
+**Example:**
+```dart
+// Before
+div([], [text('Content')])
+
+// After
+div(styles: Styles(), [], [text('Content')])
+```
+
+---
+
+### Import Conversion
+
+**Convert import to web-only / server-only import**
+
+Convert regular imports to conditional imports for web or server contexts.
+
+**Usage:** Place cursor on an import statement.
+
+**Web-only import:**
+```dart
+import 'package:example/web.dart' if (dart.library.io) 'package:example/stub.dart';
+```
+
+**Server-only import:**
+```dart
+import 'package:example/server.dart' if (dart.library.js_interop) 'package:example/stub.dart';
+```
+
+## Enabling/Disabling Lints
+
+You can selectively enable or disable individual lints:
+
+```yaml
+plugins:
+  jaspr_lints:
+    version: ^0.6.0
+    diagnostics:
+      sort_children_last: true
+      prefer_html_components: true
+      styles_ordering: false  # Disable this lint
+      prefer_styles_getter: true
+```
+
+## Suppressing Warnings
+
+To suppress a lint warning for a specific line:
+
+```dart
+// ignore: sort_children_last
+div([text('Content')], id: 'box')
+```
+
+To suppress for an entire file:
+
+```dart
+// ignore_for_file: prefer_html_components
+```
+
+## IDE Integration
+
+### VS Code
+
+1. Install the Dart extension
+2. The lints will appear automatically after `dart pub get`
+3. Use `Cmd/Ctrl + .` to see quick fixes
+
+### IntelliJ IDEA / Android Studio
+
+1. Install the Dart plugin
+2. The lints will appear automatically after `dart pub get`
+3. Use `Alt + Enter` to see quick fixes
+
+### Other Editors
+
+As long as your editor has Dart analyzer support, the lints should work automatically.
+
+## Running Analysis from CLI
+
+Run analysis on your entire project:
+
+```bash
+dart analyze
+```
+
+This will show all lint warnings and errors.
+
+## Complete Configuration Example
+
+```yaml
+# analysis_options.yaml
+
+include: package:jaspr_lints/jaspr_lints.yaml
+
+plugins:
+  jaspr_lints:
+    version: ^0.6.0
+    diagnostics:
+      # Enable all recommended lints
+      sort_children_last: true
+      prefer_html_components: true
+      styles_ordering: true
+      prefer_styles_getter: true
+
+analyzer:
+  errors:
+    # Treat specific lints as errors
+    sort_children_last: error
+    prefer_html_components: warning
+    
+  exclude:
+    # Exclude generated files
+    - '**/*.g.dart'
+    - '**/*.server.options.dart'
+    - '**/*.client.options.dart'
+
+linter:
+  rules:
+    # Additional standard Dart lints
+    prefer_const_constructors: true
+    prefer_final_fields: true
+    unnecessary_null_checks: true
+```
+
+## Troubleshooting
+
+### Lints Not Appearing
+
+1. Make sure you've run `dart pub get`
+2. Restart your IDE
+3. Check that the version in `analysis_options.yaml` matches your `pubspec.yaml`
+4. Verify the plugin is enabled in `analysis_options.yaml`
+
+### Code Assists Not Working
+
+1. Ensure your cursor is on the correct element
+2. Try invoking the quick fix menu manually (usually `Cmd/Ctrl + .`)
+3. Check that your IDE's Dart plugin is up to date
+
+### Performance Issues
+
+If analysis is slow:
+
+1. Exclude large directories in `analysis_options.yaml`
+2. Limit the scope of analysis to your project files
+3. Consider disabling resource-intensive lints
+
+## See Also
+
+- [Official jaspr_lints Documentation](https://docs.jaspr.site/api/linting)
+- [Dart Analyzer](https://dart.dev/tools/analysis)
+- [Jaspr Style Guide](/concepts/best-practices) - Best practices for Jaspr development

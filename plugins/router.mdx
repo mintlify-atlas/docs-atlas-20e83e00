@@ -1,0 +1,259 @@
+---
+title: jaspr_router
+description: Client-side routing with lazy loading and code splitting
+---
+
+A simple and powerful routing solution for Jaspr applications, adapted from Flutter's go_router package.
+
+## Installation
+
+```bash
+dart pub add jaspr_router
+```
+
+**Current version:** 0.8.1
+
+## Basic Usage
+
+The `Router` component takes a list of `Route` definitions:
+
+```dart
+import 'package:jaspr/jaspr.dart';
+import 'package:jaspr_router/jaspr_router.dart';
+import 'pages/home.dart';
+import 'pages/about.dart';
+
+class App extends StatelessComponent {
+  @override
+  Component build(BuildContext context) {
+    return Router(
+      routes: [
+        Route(path: '/', builder: (context, state) => Home()),
+        Route(path: '/about', builder: (context, state) => About()),
+      ],
+    );
+  }
+}
+```
+
+## Route Parameters
+
+Define path parameters using the `:` symbol:
+
+```dart
+Router(
+  routes: [
+    Route(
+      path: '/users/:userId',
+      builder: (context, state) {
+        final userId = state.pathParameters['userId'];
+        return UserProfile(userId: userId);
+      },
+    ),
+  ],
+)
+```
+
+The parameter values are accessible through the `RouteState` object passed to the builder function.
+
+## Nested Routes
+
+Create nested route hierarchies:
+
+```dart
+Route(
+  path: '/dashboard',
+  builder: (context, state) => DashboardLayout(),
+  routes: [
+    Route(
+      path: 'settings',
+      builder: (context, state) => Settings(),
+    ),
+    Route(
+      path: 'profile',
+      builder: (context, state) => Profile(),
+    ),
+  ],
+)
+```
+
+## Programmatic Navigation
+
+Navigate imperatively from anywhere in your component tree:
+
+```dart
+class MyComponent extends StatelessComponent {
+  @override
+  Component build(BuildContext context) {
+    return button(
+      onClick: () {
+        // Push a new route
+        Router.of(context).push('/about');
+        
+        // Replace current route
+        // Router.of(context).replace('/login');
+        
+        // Go back
+        // Router.of(context).back();
+      },
+      [text('Go to About')],
+    );
+  }
+}
+```
+
+### Navigation Methods
+
+- `push(path)` - Navigate to a new route
+- `replace(path)` - Replace the current route
+- `back()` - Navigate back in history
+
+## Lazy Routes & Code Splitting
+
+For larger applications, split your code into smaller chunks that load on-demand:
+
+```dart
+import 'pages/home.dart';
+import 'pages/about.dart' deferred as about;
+import 'pages/dashboard.dart' deferred as dashboard;
+
+class App extends StatelessComponent {
+  @override
+  Component build(BuildContext context) {
+    return Router(
+      routes: [
+        Route(path: '/', builder: (context, state) => Home()),
+        Route.lazy(
+          path: '/about',
+          builder: (context, state) => about.About(),
+          load: about.loadLibrary,
+        ),
+        Route.lazy(
+          path: '/dashboard',
+          builder: (context, state) => dashboard.Dashboard(),
+          load: dashboard.loadLibrary,
+        ),
+      ],
+    );
+  }
+}
+```
+
+This automatically:
+- Generates separate JavaScript files for each lazy route
+- Loads the appropriate file when navigating to the route
+- Reduces initial bundle size
+- Improves page load performance
+
+## Link Component
+
+Use the `Link` component for declarative navigation with automatic client-side routing:
+
+```dart
+import 'package:jaspr_router/jaspr_router.dart';
+
+Link(
+  to: '/about',
+  child: text('About Us'),
+)
+```
+
+### Link Features
+
+- Automatic client-side navigation (no page reload)
+- Fallback to server-side navigation when needed
+- Preloading on hover for lazy routes
+- Support for all standard anchor attributes
+
+```dart
+Link(
+  to: '/products/123',
+  target: Target.blank,
+  preload: true,  // Preload route on hover
+  classes: 'nav-link',
+  child: text('View Product'),
+)
+```
+
+## Named Routes
+
+Use named routes for easier navigation:
+
+```dart
+Router(
+  routes: [
+    Route(
+      path: '/',
+      name: 'home',
+      builder: (context, state) => Home(),
+    ),
+    Route(
+      path: '/users/:userId',
+      name: 'user',
+      builder: (context, state) => UserProfile(),
+    ),
+  ],
+)
+
+// Navigate by name
+Router.of(context).pushNamed('user', params: {'userId': '123'});
+```
+
+## Redirects
+
+Implement redirects at the route or router level:
+
+```dart
+// Route-level redirect
+Route(
+  path: '/old-path',
+  redirect: (context, state) => '/new-path',
+)
+
+// Router-level redirect
+Router(
+  redirect: (context, state) {
+    final isLoggedIn = checkAuth();
+    if (!isLoggedIn && state.location != '/login') {
+      return '/login';
+    }
+    return null; // No redirect
+  },
+  routes: [...],
+)
+```
+
+## Error Handling
+
+Provide a custom error page:
+
+```dart
+Router(
+  routes: [...],
+  errorBuilder: (context, state) {
+    return ErrorPage(
+      message: 'Page not found: ${state.location}',
+    );
+  },
+)
+```
+
+## Page Titles
+
+Set page titles for each route:
+
+```dart
+Route(
+  path: '/about',
+  title: 'About Us',
+  builder: (context, state) => About(),
+)
+```
+
+The title is rendered to the `<title>` element and overrides any top-level title.
+
+## Resources
+
+- [GitHub Repository](https://github.com/schultek/jaspr/tree/main/packages/jaspr_router)
+- [API Documentation](https://pub.dev/documentation/jaspr_router)
+- [Issue Tracker](https://github.com/schultek/jaspr/issues)

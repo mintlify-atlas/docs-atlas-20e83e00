@@ -1,0 +1,271 @@
+---
+title: SyncStateMixin & @sync
+description: Synchronize component state from server to client during hydration.
+---
+
+The `SyncStateMixin` allows you to sync state data from the server to the client when hydrating components. This is useful for passing server-side data to the client without additional network requests.
+
+## SyncStateMixin
+
+A mixin on `State` that syncs state data from the server to the client.
+
+### Signature
+
+```dart
+mixin SyncStateMixin<T extends StatefulComponent, U> on State<T>
+```
+
+<ParamField path="T" type="StatefulComponent">
+  The type of the component this state is associated with.
+</ParamField>
+
+<ParamField path="U" type="any">
+  The type of the state data to sync. Can be any JSON-serializable type.
+</ParamField>
+
+### Methods
+
+<Card title="getState()" icon="arrow-up-from-bracket">
+  Called on the server after the initial build to retrieve the state data of this component.
+  
+  ```dart
+  U getState()
+  ```
+  
+  **Returns:** The state data to sync to the client.
+</Card>
+
+---
+
+<Card title="updateState()" icon="arrow-down-to-bracket">
+  Called on the client during `initState()` to receive the synced state from the server.
+  
+  ```dart
+  void updateState(U value)
+  ```
+  
+  <ParamField path="value" type="U">
+    The state data received from the server.
+  </ParamField>
+</Card>
+
+### Usage
+
+```dart
+import 'package:jaspr/jaspr.dart';
+
+class Counter extends StatefulComponent {
+  @override
+  State createState() => CounterState();
+}
+
+class CounterState extends State<Counter> 
+    with SyncStateMixin<Counter, int> {
+  int count = 0;
+  
+  @override
+  void initState() {
+    super.initState(); // This will call updateState() on the client
+    // Additional initialization
+  }
+  
+  // Called on the server to get the state to sync
+  @override
+  int getState() {
+    return count;
+  }
+  
+  // Called on the client to receive the synced state
+  @override
+  void updateState(int value) {
+    count = value;
+  }
+  
+  @override
+  Component build(BuildContext context) {
+    return div([], [
+      text('Count: $count'),
+      button(
+        events: events(onClick: () {
+          setState(() => count++);
+        }),
+        [text('Increment')],
+      ),
+    ]);
+  }
+}
+```
+
+### Syncing Complex Data
+
+You can sync any JSON-serializable data structure:
+
+```dart
+class AppState extends State<App> 
+    with SyncStateMixin<App, Map<String, Object?>> {
+  String username = '';
+  int score = 0;
+  List<String> items = [];
+  
+  @override
+  Map<String, Object?> getState() {
+    return {
+      'username': username,
+      'score': score,
+      'items': items,
+    };
+  }
+  
+  @override
+  void updateState(Map<String, Object?> value) {
+    username = value['username'] as String;
+    score = value['score'] as int;
+    items = (value['items'] as List).cast<String>();
+  }
+  
+  @override
+  Component build(BuildContext context) {
+    return div([], [
+      text('Welcome $username!'),
+      text('Score: $score'),
+    ]);
+  }
+}
+```
+
+## @sync Annotation
+
+The `@sync` annotation is a code generation marker that works with the Jaspr builder to automatically implement `SyncStateMixin` for you.
+
+### Usage with @sync
+
+Instead of manually implementing `getState()` and `updateState()`, you can use the `@sync` annotation:
+
+```dart
+import 'package:jaspr/jaspr.dart';
+
+part 'counter.g.dart'; // Generated file
+
+class Counter extends StatefulComponent {
+  @override
+  State createState() => CounterState();
+}
+
+class CounterState extends State<Counter> with CounterStateSyncMixin {
+  @sync
+  int count = 0;
+  
+  @sync
+  String label = 'Counter';
+  
+  @override
+  Component build(BuildContext context) {
+    return div([], [
+      text('$label: $count'),
+      button(
+        events: events(onClick: () {
+          setState(() => count++);
+        }),
+        [text('Increment')],
+      ),
+    ]);
+  }
+}
+```
+
+The Jaspr builder will generate:
+- A mixin named `{ClassName}SyncMixin`
+- Automatic implementation of `getState()` and `updateState()`
+- Serialization/deserialization logic for all `@sync` fields
+
+<Note>
+  When using `@sync`, you must:
+  1. Run `dart run build_runner build` to generate the code
+  2. Include the `part` directive for the generated file
+  3. Apply the generated mixin to your state class
+</Note>
+
+## Initialization Order
+
+It's important to understand when `updateState()` is called:
+
+```dart
+class MyState extends State<MyComponent> 
+    with SyncStateMixin<MyComponent, int> {
+  int value = 0;
+  
+  @override
+  void initState() {
+    // This runs BEFORE updateState() on the client
+    print('Before: $value');
+    
+    super.initState(); // This calls updateState() on the client
+    
+    // This runs AFTER updateState() on the client
+    print('After: $value');
+  }
+  
+  @override
+  int getState() => value;
+  
+  @override
+  void updateState(int newValue) {
+    value = newValue;
+  }
+  
+  // Rest of implementation...
+}
+```
+
+<Note>
+  On initialization, `updateState()` is called as part of the `super.initState()` call. It is recommended to start with the `super.initState()` call in your custom `initState()` implementation. However, if you need to do some work before `updateState()` is called, you can invoke `super.initState()` later in your implementation.
+</Note>
+
+## Combining with PreloadStateMixin
+
+You can use both mixins together to preload data on the server and sync it to the client:
+
+```dart
+class DataState extends State<DataComponent> 
+    with PreloadStateMixin, SyncStateMixin<DataComponent, Map<String, Object?>> {
+  List<String> data = [];
+  
+  @override
+  Future<void> preloadState() async {
+    // Fetch data on the server before rendering
+    data = await fetchDataFromDatabase();
+  }
+  
+  @override
+  Map<String, Object?> getState() {
+    return {'data': data};
+  }
+  
+  @override
+  void updateState(Map<String, Object?> value) {
+    data = (value['data'] as List).cast<String>();
+  }
+  
+  @override
+  Component build(BuildContext context) {
+    return ul([], data.map((item) => li([], [text(item)])).toList());
+  }
+}
+```
+
+## How It Works
+
+1. **Server-side**: After the component builds, `getState()` is called and the data is serialized to JSON
+2. **HTML Markup**: The serialized data is embedded as an HTML comment in the rendered output
+3. **Client-side**: During hydration, the comment is parsed and `updateState()` is called with the deserialized data
+4. **Cleanup**: The HTML comment is removed from the DOM
+
+<Warning>
+  The state data must be JSON-serializable. Complex objects, functions, and circular references are not supported. For custom classes, use [@encoder/@decoder](/api/utils/at_encoder_decoder) annotations.
+</Warning>
+
+## See Also
+
+- [PreloadStateMixin](/api/server-client/preload-state) - Preload async data on the server
+- [@client Components](/api/utils/at_client) - Passing data through client components
+- [@encoder/@decoder](/api/utils/at_encoder_decoder) - Custom serialization for classes

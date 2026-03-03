@@ -1,0 +1,232 @@
+---
+title: CLI Overview
+description: Introduction to the Jaspr command-line interface for creating, serving, and building web applications
+---
+
+The Jaspr CLI is a comprehensive command-line tool for managing Jaspr web applications. It provides commands for project creation, development, and production builds.
+
+## Installation
+
+Install the Jaspr CLI globally using Dart's pub tool:
+
+```bash
+dart pub global activate jaspr_cli
+```
+
+Verify the installation:
+
+```bash
+jaspr --version
+```
+
+<Note>
+The CLI requires Dart SDK 3.8.0 or later.
+</Note>
+
+## Available Commands
+
+The Jaspr CLI provides the following core commands:
+
+<CardGroup cols={2}>
+  <Card title="create" icon="plus" href="/cli/create">
+    Create a new Jaspr project with customizable templates and presets
+  </Card>
+  <Card title="serve" icon="play" href="/cli/serve">
+    Run a development server with hot reload for rapid iteration
+  </Card>
+  <Card title="build" icon="hammer" href="/cli/build">
+    Build your project for production deployment
+  </Card>
+  <Card title="doctor" icon="stethoscope">
+    Check your environment and diagnose common issues
+  </Card>
+</CardGroup>
+
+## Quick Start
+
+Create and run a new Jaspr project:
+
+<Steps>
+  <Step title="Create a new project">
+    ```bash
+    jaspr create my_website
+    ```
+    
+    The CLI will prompt you to configure your project with options for:
+    - Rendering mode (static, server, or client)
+    - Routing strategy (none, multi-page, or single-page)
+    - Flutter support (none, embedded, or plugins-only)
+    - Backend framework (for server mode)
+  </Step>
+
+  <Step title="Navigate to your project">
+    ```bash
+    cd my_website
+    ```
+  </Step>
+
+  <Step title="Start the development server">
+    ```bash
+    jaspr serve
+    ```
+    
+    Your app will be available at `http://localhost:8080` with hot reload enabled.
+  </Step>
+
+  <Step title="Build for production">
+    ```bash
+    jaspr build
+    ```
+    
+    The compiled output will be in `build/jaspr/`.
+  </Step>
+</Steps>
+
+## Global Flags
+
+These flags are available for all commands:
+
+<ParamField path="--verbose" type="flag" default="false">
+  Enable verbose logging to see detailed output and debugging information.
+  
+  ```bash
+  jaspr serve --verbose
+  ```
+</ParamField>
+
+<ParamField path="--help" type="flag" default="false">
+  Display help information for any command.
+  
+  ```bash
+  jaspr build --help
+  ```
+</ParamField>
+
+## Command Categories
+
+### Project Commands
+
+Commands for managing your Jaspr project lifecycle:
+
+- **create** - Initialize a new project
+- **serve** - Run development server
+- **build** - Build for production
+
+### Utility Commands
+
+- **doctor** - Diagnose environment issues
+- **update** - Update Jaspr dependencies
+- **clean** - Clean build artifacts
+- **migrate** - Migrate projects between versions
+
+## Terminal Output
+
+The CLI uses color-coded tags to distinguish between different processes:
+
+<CodeGroup>
+```bash Example Output
+[CLI] Running jaspr in server rendering mode.
+[CLI] Starting web compiler...
+[CLI] Building web assets...
+[CLIENT] Compiled main.dart
+[SERVER] Server started on port 8080
+[CLI] Done building web assets.
+```
+
+```bash With Verbose Flag
+[CLI] Running jaspr in server rendering mode.
+[CLI] Using server entry point: lib/main.server.dart
+[CLI] Starting web compiler...
+[CLIENT] build_runner version: 2.4.6
+[CLIENT] Running build...
+[CLIENT] Compiled main.dart (123ms)
+[SERVER] Listening on http://localhost:8080
+```
+</CodeGroup>
+
+## Configuration
+
+The CLI reads configuration from your `pubspec.yaml`:
+
+```yaml pubspec.yaml
+name: my_website
+
+jaspr:
+  mode: server  # static, server, or client
+  port: 8080    # Default port for development
+```
+
+## Environment Requirements
+
+<AccordionGroup>
+  <Accordion title="Dart SDK">
+    - Minimum version: 3.8.0
+    - Latest stable version recommended
+    - Install from [dart.dev](https://dart.dev/get-dart)
+  </Accordion>
+
+  <Accordion title="Flutter SDK (Optional)">
+    - Required only for Flutter embedding or plugin support
+    - Version 3.22.0 or later recommended
+    - Install from [flutter.dev](https://flutter.dev/docs/get-started/install)
+  </Accordion>
+
+  <Accordion title="Browser (Development)">
+    - Chrome recommended for debugging with DevTools
+    - Use `--launch-in-chrome` flag to auto-launch
+  </Accordion>
+</AccordionGroup>
+
+## Troubleshooting
+
+If you encounter issues, run the doctor command:
+
+```bash
+jaspr doctor
+```
+
+Common issues:
+
+<AccordionGroup>
+  <Accordion title="Command not found">
+    Ensure `~/.pub-cache/bin` is in your PATH:
+    
+    ```bash
+    export PATH="$PATH:$HOME/.pub-cache/bin"
+    ```
+  </Accordion>
+
+  <Accordion title="Port already in use">
+    Specify a different port:
+    
+    ```bash
+    jaspr serve --port 3000
+    ```
+  </Accordion>
+
+  <Accordion title="Build failures">
+    Clean build artifacts and try again:
+    
+    ```bash
+    jaspr clean
+    jaspr build
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Create Command" icon="plus" href="/cli/create">
+    Learn about project creation options and templates
+  </Card>
+  <Card title="Serve Command" icon="play" href="/cli/serve">
+    Explore development server features and hot reload
+  </Card>
+  <Card title="Build Command" icon="hammer" href="/cli/build">
+    Understand production build options and optimization
+  </Card>
+  <Card title="Quick Start" icon="rocket" href="/quick-start">
+    Follow the complete getting started guide
+  </Card>
+</CardGroup>

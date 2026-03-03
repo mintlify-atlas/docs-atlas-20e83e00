@@ -1,0 +1,322 @@
+---
+title: Building your first Jaspr app
+description: Step-by-step tutorial to create a complete Jaspr application from scratch
+---
+
+Learn how to build a complete Jaspr application by creating a simple todo list app with server-side rendering.
+
+## What you'll build
+
+In this tutorial, you'll create a todo list application that demonstrates:
+
+- Component composition
+- State management with `StatefulComponent`
+- HTML elements and styling
+- Event handling
+- Server-side rendering
+
+## Prerequisites
+
+<Steps>
+  <Step title="Install Dart SDK">
+    Make sure you have Dart SDK 3.8.0 or later installed:
+    
+    ```bash
+    dart --version
+    ```
+  </Step>
+  
+  <Step title="Install Jaspr CLI">
+    Activate the Jaspr command-line tool:
+    
+    ```bash
+    dart pub global activate jaspr_cli
+    ```
+  </Step>
+</Steps>
+
+## Create your project
+
+<Steps>
+  <Step title="Create a new Jaspr project">
+    ```bash
+    jaspr create todo_app
+    ```
+    
+    When prompted, select:
+    - **Mode**: Server (SSR)
+    - **Routing**: Single-page
+    - **Flutter**: None
+  </Step>
+  
+  <Step title="Navigate to the project">
+    ```bash
+    cd todo_app
+    ```
+  </Step>
+  
+  <Step title="Start the development server">
+    ```bash
+    jaspr serve
+    ```
+    
+    Your app will be available at `http://localhost:8080`
+  </Step>
+</Steps>
+
+## Build the todo component
+
+Replace the contents of `lib/app.dart` with the following:
+
+```dart
+import 'package:jaspr/jaspr.dart';
+
+class App extends StatefulComponent {
+  @override
+  State<App> createState() => _AppState();
+}
+
+class _AppState extends State<App> {
+  List<TodoItem> todos = [];
+  
+  void addTodo(String text) {
+    setState(() {
+      todos.add(TodoItem(text: text, completed: false));
+    });
+  }
+  
+  void toggleTodo(int index) {
+    setState(() {
+      todos[index].completed = !todos[index].completed;
+    });
+  }
+  
+  void removeTodo(int index) {
+    setState(() {
+      todos.removeAt(index);
+    });
+  }
+  
+  @override
+  Component build(BuildContext context) {
+    return div([
+      h1([text('My Todo App')]),
+      TodoInput(onAdd: addTodo),
+      TodoList(
+        todos: todos,
+        onToggle: toggleTodo,
+        onRemove: removeTodo,
+      ),
+    ]);
+  }
+}
+
+class TodoItem {
+  String text;
+  bool completed;
+  
+  TodoItem({required this.text, required this.completed});
+}
+```
+
+## Create the input component
+
+Add a `TodoInput` component for adding new todos:
+
+```dart
+class TodoInput extends StatefulComponent {
+  final void Function(String) onAdd;
+  
+  const TodoInput({required this.onAdd});
+  
+  @override
+  State<TodoInput> createState() => _TodoInputState();
+}
+
+class _TodoInputState extends State<TodoInput> {
+  String input = '';
+  
+  void handleSubmit(Event event) {
+    event.preventDefault();
+    if (input.isNotEmpty) {
+      component.onAdd(input);
+      setState(() {
+        input = '';
+      });
+    }
+  }
+  
+  @override
+  Component build(BuildContext context) {
+    return form([
+      input_(
+        type: InputType.text,
+        value: input,
+        placeholder: 'Add a new todo...',
+        events: {
+          'input': (event) {
+            setState(() {
+              input = (event.target as InputElement).value;
+            });
+          },
+        },
+        styles: Styles(
+          padding: EdgeInsets.all(8.px),
+          fontSize: 16.px,
+        ),
+      ),
+      button(
+        onClick: handleSubmit,
+        [
+          text('Add Todo'),
+        ],
+        styles: Styles(
+          padding: EdgeInsets.symmetric(horizontal: 16.px, vertical: 8.px),
+          marginLeft: 8.px,
+        ),
+      ),
+    ]);
+  }
+}
+```
+
+<Note>
+We use `event.preventDefault()` to stop the form from submitting and refreshing the page.
+</Note>
+
+## Create the list component
+
+Add a `TodoList` component to display todos:
+
+```dart
+class TodoList extends StatelessComponent {
+  final List<TodoItem> todos;
+  final void Function(int) onToggle;
+  final void Function(int) onRemove;
+  
+  const TodoList({
+    required this.todos,
+    required this.onToggle,
+    required this.onRemove,
+  });
+  
+  @override
+  Component build(BuildContext context) {
+    if (todos.isEmpty) {
+      return p([text('No todos yet! Add one above.')], 
+        styles: Styles(color: Colors.grey));
+    }
+    
+    return ul(
+      todos.asMap().entries.map((entry) {
+        final index = entry.key;
+        final todo = entry.value;
+        
+        return li([
+          input_(
+            type: InputType.checkbox,
+            checked: todo.completed,
+            onChange: (event) => onToggle(index),
+            id: 'todo-$index',
+          ),
+          label(
+            for_: 'todo-$index',
+            [
+              text(todo.text),
+            ],
+            styles: Styles(
+              textDecoration: todo.completed ? TextDecoration.lineThrough : null,
+              color: todo.completed ? Colors.grey : Colors.black,
+              marginLeft: 8.px,
+            ),
+          ),
+          button(
+            onClick: (event) => onRemove(index),
+            [text('Delete')],
+            styles: Styles(
+              marginLeft: 16.px,
+              color: Colors.red,
+            ),
+          ),
+        ]);
+      }).toList(),
+      styles: Styles(
+        listStyle: ListStyleType.none,
+        padding: EdgeInsets.zero,
+      ),
+    );
+  }
+}
+```
+
+## Add styling
+
+Enhance the app with better styling. Update your `App` component:
+
+```dart
+@override
+Component build(BuildContext context) {
+  return div([
+    div([
+      h1([text('My Todo App')], 
+        styles: Styles(
+          color: Color.hex('#01589B'),
+          marginBottom: 20.px,
+        )),
+      TodoInput(onAdd: addTodo),
+      div([
+        text('${todos.where((t) => !t.completed).length} tasks remaining'),
+      ], styles: Styles(
+        marginTop: 16.px,
+        fontSize: 14.px,
+        color: Colors.grey,
+      )),
+      TodoList(
+        todos: todos,
+        onToggle: toggleTodo,
+        onRemove: removeTodo,
+      ),
+    ], styles: Styles(
+      maxWidth: 600.px,
+      margin: EdgeInsets.symmetric(horizontal: Unit.auto, vertical: 40.px),
+      padding: EdgeInsets.all(20.px),
+      background: Background(color: Colors.white),
+      borderRadius: BorderRadius.all(BorderSide.radius(8.px)),
+      boxShadow: BoxShadow(
+        blurRadius: 10.px,
+        color: Color.rgba(0, 0, 0, 0.1),
+      ),
+    )),
+  ], styles: Styles(
+    minHeight: 100.vh,
+    background: Background(color: Color.hex('#f5f5f5')),
+    fontFamily: FontFamily.list([FontFamily('system-ui'), FontFamily.sansSerif]),
+  ));
+}
+```
+
+## Test your app
+
+The development server will automatically reload your changes. Test the following:
+
+1. Add a new todo item
+2. Check the checkbox to mark it as complete
+3. Click delete to remove a todo
+4. Watch the counter update automatically
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Add routing" icon="route" href="/guides/routing-navigation">
+    Learn how to add multiple pages to your app
+  </Card>
+  <Card title="Server-side rendering" icon="server" href="/guides/ssr-setup">
+    Understand how SSR works in Jaspr
+  </Card>
+  <Card title="State management" icon="database" href="/guides/state-management">
+    Use advanced state management patterns
+  </Card>
+  <Card title="Deploy your app" icon="rocket" href="/advanced/deploying">
+    Deploy your app to production
+  </Card>
+</CardGroup>

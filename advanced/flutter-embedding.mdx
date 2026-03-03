@@ -1,0 +1,439 @@
+---
+title: Flutter Embedding
+description: Embed Flutter widgets inside Jaspr web applications
+---
+
+The `jaspr_flutter_embed` package allows you to embed Flutter widgets directly into your Jaspr web applications, combining the best of both frameworks.
+
+## Overview
+
+Flutter embedding enables you to:
+- Use Flutter's rich widget ecosystem in web apps
+- Leverage existing Flutter widgets and packages
+- Create hybrid applications with Jaspr HTML and Flutter UI
+- Gradually migrate Flutter widgets to Jaspr components
+
+<Warning>
+Flutter embedding only works on the web platform. The embedded widgets run in the browser using Flutter's web renderer.
+</Warning>
+
+## Installation
+
+Add the dependency to your `pubspec.yaml`:
+
+```yaml
+dependencies:
+  jaspr: ^latest
+  jaspr_flutter_embed: ^latest
+  flutter:
+    sdk: flutter
+```
+
+<Tip>
+You need both the Flutter SDK and Dart SDK installed for Flutter embedding to work.
+</Tip>
+
+## Basic Usage
+
+Use the `FlutterEmbedView` component to embed Flutter widgets:
+
+```dart
+import 'package:jaspr/jaspr.dart';
+import 'package:jaspr_flutter_embed/jaspr_flutter_embed.dart';
+import 'package:flutter/material.dart' as flutter;
+
+class MyComponent extends StatelessComponent {
+  @override
+  Component build(BuildContext context) {
+    return div([
+      h1([text('Jaspr with Flutter')]),
+      FlutterEmbedView(
+        widget: flutter.MaterialApp(
+          home: flutter.Scaffold(
+            body: flutter.Center(
+              child: flutter.Text('Hello from Flutter!'),
+            ),
+          ),
+        ),
+      ),
+    ]);
+  }
+}
+```
+
+## FlutterEmbedView Properties
+
+The `FlutterEmbedView` component accepts several properties:
+
+```dart
+FlutterEmbedView(
+  // The Flutter widget to embed
+  widget: myFlutterWidget,
+  
+  // Optional HTML id attribute
+  id: 'flutter-container',
+  
+  // Optional CSS classes
+  classes: 'flutter-embed responsive',
+  
+  // Optional inline styles
+  styles: Styles(
+    width: 100.percent,
+    height: 500.px,
+  ),
+  
+  // Optional loading component shown while Flutter loads
+  loader: div([text('Loading Flutter...')]),
+  
+  // Optional constraints for the Flutter view
+  constraints: ViewConstraints(
+    minWidth: 300,
+    maxWidth: 800,
+  ),
+)
+```
+
+## Deferred Loading
+
+For better performance, load Flutter widgets lazily using deferred imports:
+
+```dart
+import 'package:jaspr/jaspr.dart';
+import 'package:jaspr_flutter_embed/jaspr_flutter_embed.dart';
+
+// Deferred import of Flutter widget
+import 'widgets/my_flutter_widget.dart' deferred as flutter_widgets;
+
+class MyComponent extends StatelessComponent {
+  @override
+  Component build(BuildContext context) {
+    return FlutterEmbedView.deferred(
+      // Load the Flutter library
+      loadLibrary: flutter_widgets.loadLibrary(),
+      
+      // Builder function called after library loads
+      builder: () => flutter_widgets.MyFlutterWidget(),
+      
+      // Loading indicator
+      loader: div([
+        text('Loading Flutter widget...'),
+      ]),
+    );
+  }
+}
+```
+
+<Tip>
+Deferred loading reduces initial bundle size and improves page load performance.
+</Tip>
+
+## Preloading Flutter
+
+Preload the Flutter engine before rendering:
+
+```dart
+import 'package:jaspr_flutter_embed/jaspr_flutter_embed.dart';
+
+void main() async {
+  // Preload Flutter engine
+  await FlutterEmbedView.preload();
+  
+  runApp(MyApp());
+}
+```
+
+This initializes Flutter in the background, reducing the time to first Flutter render.
+
+## View Constraints
+
+Control the size and layout of embedded Flutter widgets:
+
+```dart
+import 'package:jaspr_flutter_embed/jaspr_flutter_embed.dart';
+
+FlutterEmbedView(
+  constraints: ViewConstraints(
+    // Minimum dimensions
+    minWidth: 300,
+    minHeight: 200,
+    
+    // Maximum dimensions
+    maxWidth: 1200,
+    maxHeight: 800,
+    
+    // Fixed dimensions (overrides min/max)
+    width: 600,
+    height: 400,
+  ),
+  widget: myFlutterWidget,
+)
+```
+
+## Styling the Container
+
+Style the container element using CSS:
+
+```dart
+FlutterEmbedView(
+  id: 'my-flutter-app',
+  classes: 'flutter-container',
+  styles: Styles(
+    width: 100.percent,
+    height: 600.px,
+    border: Border.all(
+      color: Colors.grey,
+      width: 1.px,
+    ),
+    borderRadius: BorderRadius.all(
+      Radius.circular(8.px),
+    ),
+    boxShadow: [
+      BoxShadow(
+        color: Colors.black.withOpacity(0.1),
+        blurRadius: 10.px,
+      ),
+    ],
+  ),
+  widget: myWidget,
+)
+```
+
+## Communication Between Jaspr and Flutter
+
+### Passing Data to Flutter
+
+Create Flutter widgets that accept parameters:
+
+```dart
+// Flutter widget
+class CounterWidget extends StatelessWidget {
+  final int initialCount;
+  
+  const CounterWidget({required this.initialCount});
+  
+  @override
+  Widget build(BuildContext context) {
+    return Text('Count: $initialCount');
+  }
+}
+
+// Jaspr component
+class MyJasprComponent extends StatefulComponent {
+  @override
+  State createState() => _MyJasprComponentState();
+}
+
+class _MyJasprComponentState extends State<MyJasprComponent> {
+  int count = 0;
+  
+  @override
+  Component build(BuildContext context) {
+    return div([
+      button(
+        onClick: () => setState(() => count++),
+        [text('Increment')],
+      ),
+      FlutterEmbedView(
+        widget: CounterWidget(initialCount: count),
+      ),
+    ]);
+  }
+}
+```
+
+### Using State Management
+
+Share state between Jaspr and Flutter using providers:
+
+```dart
+import 'package:jaspr_riverpod/jaspr_riverpod.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart' as flutter_riverpod;
+
+// Shared provider (works in both Jaspr and Flutter)
+final counterProvider = StateProvider<int>((ref) => 0);
+
+// Jaspr component
+class JasprCounter extends StatelessComponent {
+  @override
+  Component build(BuildContext context) {
+    return ProviderScope(
+      child: Consumer(
+        builder: (context, ref, child) {
+          final count = ref.watch(counterProvider);
+          return div([
+            text('Jaspr count: $count'),
+            button(
+              onClick: () => ref.read(counterProvider.notifier).state++,
+              [text('Increment from Jaspr')],
+            ),
+            FlutterEmbedView(
+              widget: flutter_riverpod.ProviderScope(
+                child: FlutterCounter(),
+              ),
+            ),
+          ]);
+        },
+      ),
+    );
+  }
+}
+
+// Flutter widget
+class FlutterCounter extends flutter_riverpod.ConsumerWidget {
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final count = ref.watch(counterProvider);
+    return Column(
+      children: [
+        Text('Flutter count: $count'),
+        ElevatedButton(
+          onPressed: () => ref.read(counterProvider.notifier).state++,
+          child: Text('Increment from Flutter'),
+        ),
+      ],
+    );
+  }
+}
+```
+
+## Real-World Example
+
+Here's a complete example embedding a Flutter chart in a Jaspr dashboard:
+
+```dart
+import 'package:jaspr/jaspr.dart';
+import 'package:jaspr_flutter_embed/jaspr_flutter_embed.dart';
+import 'package:flutter/material.dart' as flutter;
+import 'package:fl_chart/fl_chart.dart' as charts;
+
+class Dashboard extends StatelessComponent {
+  @override
+  Component build(BuildContext context) {
+    return div(classes: 'dashboard', [
+      // Jaspr HTML header
+      header([
+        h1([text('Sales Dashboard')]),
+        p([text('Real-time analytics')]),
+      ]),
+      
+      // Jaspr stats grid
+      div(classes: 'stats-grid', [
+        statCard('Revenue', '\$125,430'),
+        statCard('Orders', '1,234'),
+        statCard('Customers', '856'),
+      ]),
+      
+      // Embedded Flutter chart
+      section(classes: 'chart-section', [
+        h2([text('Revenue Trend')]),
+        FlutterEmbedView(
+          id: 'revenue-chart',
+          styles: Styles(
+            width: 100.percent,
+            height: 400.px,
+          ),
+          loader: div(classes: 'chart-loader', [
+            text('Loading chart...'),
+          ]),
+          widget: flutter.MaterialApp(
+            theme: flutter.ThemeData.light(),
+            home: flutter.Scaffold(
+              backgroundColor: flutter.Colors.transparent,
+              body: charts.LineChart(
+                charts.LineChartData(
+                  // Chart configuration
+                  gridData: charts.FlGridData(show: true),
+                  titlesData: charts.FlTitlesData(show: true),
+                  borderData: charts.FlBorderData(show: true),
+                  lineBarsData: [
+                    charts.LineChartBarData(
+                      spots: [
+                        charts.FlSpot(0, 1),
+                        charts.FlSpot(1, 3),
+                        charts.FlSpot(2, 2),
+                        charts.FlSpot(3, 5),
+                        charts.FlSpot(4, 4),
+                      ],
+                      isCurved: true,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ]),
+    ]);
+  }
+  
+  Component statCard(String label, String value) {
+    return div(classes: 'stat-card', [
+      span(classes: 'stat-label', [text(label)]),
+      span(classes: 'stat-value', [text(value)]),
+    ]);
+  }
+}
+```
+
+## Platform Considerations
+
+<Warning>
+Flutter embedding is web-only. When building for other platforms or server-side rendering, provide fallbacks.
+</Warning>
+
+### Conditional Platform Imports
+
+```dart
+import 'package:jaspr/jaspr.dart';
+
+// Platform-specific imports
+import 'flutter_view_web.dart'
+  if (dart.library.io) 'flutter_view_fallback.dart';
+
+class MyComponent extends StatelessComponent {
+  @override
+  Component build(BuildContext context) {
+    return div([
+      h1([text('My App')]),
+      FlutterView(), // Uses web version on web, fallback otherwise
+    ]);
+  }
+}
+```
+
+## Performance Tips
+
+<Steps>
+  <Step title="Use deferred loading">
+    Load Flutter widgets lazily to reduce initial bundle size.
+  </Step>
+  
+  <Step title="Preload the Flutter engine">
+    Call `FlutterEmbedView.preload()` early to initialize Flutter in the background.
+  </Step>
+  
+  <Step title="Limit embedded widgets">
+    Don't embed too many Flutter widgets on a single page - they each require resources.
+  </Step>
+  
+  <Step title="Use Jaspr for layout">
+    Let Jaspr handle the page structure and layout; use Flutter only for complex UI components.
+  </Step>
+</Steps>
+
+## Troubleshooting
+
+**Flutter widget not rendering:**
+- Ensure container has explicit width/height
+- Check browser console for Flutter initialization errors
+- Verify Flutter SDK is properly installed
+
+**Performance issues:**
+- Use deferred loading for large Flutter widgets
+- Limit the number of embedded widgets per page
+- Consider using Jaspr components instead for simple UI
+
+**Styling conflicts:**
+- Flutter uses its own styling system
+- Isolate Flutter widgets in containers with explicit dimensions
+- Use Flutter's theming for Flutter widgets, Jaspr styles for HTML elements

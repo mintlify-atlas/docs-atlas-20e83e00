@@ -1,0 +1,435 @@
+---
+title: AsyncBuilder & AsyncStatelessComponent
+description: API reference for async components
+---
+
+## Overview
+
+Jaspr provides several components for handling asynchronous operations:
+
+- `FutureBuilder` - Builds UI based on a `Future`
+- `StreamBuilder` - Builds UI based on a `Stream`
+- `AsyncStatelessComponent` - Server-only component with async build method
+- `AsyncBuilder` - Server-only wrapper for async builder functions
+
+## FutureBuilder
+
+Component that builds itself based on the latest snapshot of interaction with a `Future`.
+
+### Constructor
+
+```dart
+const FutureBuilder<T>({
+  Key? key,
+  Future<T>? future,
+  T? initialData,
+  required AsyncComponentBuilder<T> builder,
+})
+```
+
+<ParamField path="future" type="Future<T>?">
+  The asynchronous computation to which this builder is currently connected. Must be obtained earlier (e.g., in `initState`), not created during `build`.
+</ParamField>
+
+<ParamField path="initialData" type="T?">
+  The data that will be used to create the initial snapshot. Ensures the first frame shows useful data.
+</ParamField>
+
+<ParamField path="builder" type="AsyncComponentBuilder<T>" required>
+  The build strategy. Receives an `AsyncSnapshot<T>` and returns a `Component`.
+</ParamField>
+
+<ParamField path="key" type="Key?">
+  An optional key for the component.
+</ParamField>
+
+<Warning>
+  When running on the server, `future` must be `null` to avoid scheduling unallowed rebuilds. Use `kIsWeb` to conditionally provide a future only on the web, or use `PreloadStateMixin` or `AsyncStatelessComponent` instead.
+</Warning>
+
+### Example Usage
+
+```dart
+class UserProfile extends StatelessComponent {
+  UserProfile({required this.userId});
+
+  final String userId;
+
+  @override
+  Component build(BuildContext context) {
+    return FutureBuilder<User>(
+      future: fetchUser(userId),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return div([text('Loading...')]);
+        }
+        
+        if (snapshot.hasError) {
+          return div([text('Error: ${snapshot.error}')]);
+        }
+        
+        if (snapshot.hasData) {
+          final user = snapshot.data!;
+          return div([
+            h2([text(user.name)]),
+            p([text(user.email)]),
+          ]);
+        }
+        
+        return div([text('No data')]);
+      },
+    );
+  }
+}
+```
+
+### With Initial Data
+
+```dart
+FutureBuilder<String>(
+  future: loadMessage(),
+  initialData: 'Welcome!',
+  builder: (context, snapshot) {
+    // First frame will show 'Welcome!' immediately
+    return text(snapshot.data ?? 'Loading...');
+  },
+)
+```
+
+### Server-Safe Pattern
+
+```dart
+import 'package:jaspr/jaspr.dart';
+
+class DataComponent extends StatelessComponent {
+  @override
+  Component build(BuildContext context) {
+    return FutureBuilder<String>(
+      // Only provide future on client
+      future: kIsWeb ? fetchData() : null,
+      builder: (context, snapshot) {
+        if (snapshot.hasData) {
+          return text('Data: ${snapshot.data}');
+        }
+        return text('No data');
+      },
+    );
+  }
+}
+```
+
+## StreamBuilder
+
+Component that builds itself based on the latest snapshot of interaction with a `Stream`.
+
+### Constructor
+
+```dart
+const StreamBuilder<T>({
+  Key? key,
+  Stream<T>? stream,
+  T? initialData,
+  required AsyncComponentBuilder<T> builder,
+})
+```
+
+<ParamField path="stream" type="Stream<T>?">
+  The asynchronous stream to which this builder is currently connected.
+</ParamField>
+
+<ParamField path="initialData" type="T?">
+  The data that will be used to create the initial snapshot.
+</ParamField>
+
+<ParamField path="builder" type="AsyncComponentBuilder<T>" required>
+  The build strategy. Receives an `AsyncSnapshot<T>` and returns a `Component`.
+</ParamField>
+
+<ParamField path="key" type="Key?">
+  An optional key for the component.
+</ParamField>
+
+<Warning>
+  When running on the server, `stream` must be `null` to avoid scheduling unallowed rebuilds. Use `kIsWeb` to conditionally provide a stream only on the web.
+</Warning>
+
+### Example Usage
+
+```dart
+class ChatMessages extends StatelessComponent {
+  ChatMessages({required this.messageStream});
+
+  final Stream<Message> messageStream;
+
+  @override
+  Component build(BuildContext context) {
+    return StreamBuilder<Message>(
+      stream: messageStream,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return div([text('Connecting...')]);
+        }
+        
+        if (snapshot.connectionState == ConnectionState.done) {
+          return div([text('Stream closed')]);
+        }
+        
+        if (snapshot.hasError) {
+          return div([text('Error: ${snapshot.error}')]);
+        }
+        
+        if (snapshot.hasData) {
+          final message = snapshot.data!;
+          return div([
+            span([text(message.author)]),
+            p([text(message.content)]),
+          ]);
+        }
+        
+        return div([text('No messages yet')]);
+      },
+    );
+  }
+}
+```
+
+## AsyncSnapshot
+
+Immutable representation of the most recent interaction with an asynchronous computation.
+
+Generic type `AsyncSnapshot<T>` where `T` is the data type.
+
+### Properties
+
+<ResponseField name="connectionState" type="ConnectionState">
+  Current state of connection to the asynchronous computation.
+</ResponseField>
+
+<ResponseField name="data" type="T?">
+  The latest data received by the asynchronous computation.
+</ResponseField>
+
+<ResponseField name="error" type="Object?">
+  The latest error object received by the asynchronous computation.
+</ResponseField>
+
+<ResponseField name="stackTrace" type="StackTrace?">
+  The latest stack trace object received by the asynchronous computation.
+</ResponseField>
+
+### Methods
+
+#### hasData
+
+```dart
+bool get hasData
+```
+
+Returns whether this snapshot contains a non-null `data` value.
+
+#### hasError
+
+```dart
+bool get hasError
+```
+
+Returns whether this snapshot contains a non-null `error` value.
+
+#### requireData
+
+```dart
+T get requireData
+```
+
+Returns latest data received, failing if there is no data. Throws `error` if `hasError`, throws `StateError` if neither `hasData` nor `hasError`.
+
+## ConnectionState
+
+Enum representing the state of connection to an asynchronous computation.
+
+<ResponseField name="none" type="ConnectionState">
+  Not currently connected to any asynchronous computation.
+</ResponseField>
+
+<ResponseField name="waiting" type="ConnectionState">
+  Connected to an asynchronous computation and awaiting interaction.
+</ResponseField>
+
+<ResponseField name="active" type="ConnectionState">
+  Connected to an active asynchronous computation (e.g., a Stream that has returned at least one value).
+</ResponseField>
+
+<ResponseField name="done" type="ConnectionState">
+  Connected to a terminated asynchronous computation.
+</ResponseField>
+
+## AsyncStatelessComponent
+
+<Note>
+  Server-only component. This component is only permitted to be used on the server.
+</Note>
+
+The async variant of a stateless component with an async `build` method.
+
+### Constructor
+
+```dart
+const AsyncStatelessComponent({Key? key})
+```
+
+### Methods
+
+#### build
+
+```dart
+Future<Component> build(BuildContext context)
+```
+
+Async build method that returns a `Future<Component>`.
+
+<ParamField path="context" type="BuildContext">
+  The build context.
+</ParamField>
+
+<ResponseField name="return" type="Future<Component>">
+  A future that completes with the component to render.
+</ResponseField>
+
+### Example Usage
+
+```dart
+import 'package:jaspr/server.dart';
+
+class ServerDataComponent extends AsyncStatelessComponent {
+  @override
+  Future<Component> build(BuildContext context) async {
+    final data = await fetchDataFromDatabase();
+    final processed = await processData(data);
+    
+    return div([
+      h1([text('Server Data')]),
+      p([text('Processed: $processed')]),
+    ]);
+  }
+}
+```
+
+## AsyncBuilder
+
+<Note>
+  Server-only component. This component is only permitted to be used on the server.
+</Note>
+
+The async variant of a `Builder` component. Accepts an async builder function that returns a future of a component.
+
+### Constructor
+
+```dart
+const AsyncBuilder({
+  required Future<Component> Function(BuildContext context) builder,
+  Key? key,
+})
+```
+
+<ParamField path="builder" type="Future<Component> Function(BuildContext)" required>
+  Async function that builds the component.
+</ParamField>
+
+<ParamField path="key" type="Key?">
+  An optional key for the component.
+</ParamField>
+
+### Example Usage
+
+```dart
+import 'package:jaspr/server.dart';
+
+AsyncBuilder(
+  builder: (context) async {
+    final posts = await fetchBlogPosts();
+    
+    return div(
+      posts.map((post) => article([
+        h2([text(post.title)]),
+        p([text(post.excerpt)]),
+      ])).toList(),
+    );
+  },
+)
+```
+
+### Multiple Async Operations
+
+```dart
+AsyncBuilder(
+  builder: (context) async {
+    final results = await Future.wait([
+      fetchUser(),
+      fetchPosts(),
+      fetchComments(),
+    ]);
+    
+    final user = results[0] as User;
+    final posts = results[1] as List<Post>;
+    final comments = results[2] as List<Comment>;
+    
+    return div([
+      UserProfile(user: user),
+      PostList(posts: posts),
+      CommentList(comments: comments),
+    ]);
+  },
+)
+```
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Don't create futures in build">
+    Always create futures outside of the build method, such as in `initState` for stateful components.
+    
+    ```dart
+    // BAD
+    FutureBuilder(
+      future: fetchData(), // Created every rebuild!
+      builder: ...,
+    )
+    
+    // GOOD
+    class MyComponent extends StatefulComponent {
+      late Future<Data> _dataFuture;
+      
+      @override
+      void initState() {
+        super.initState();
+        _dataFuture = fetchData();
+      }
+      
+      @override
+      Component build(BuildContext context) {
+        return FutureBuilder(
+          future: _dataFuture,
+          builder: ...,
+        );
+      }
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="Use server-only async components for SSR">
+    For server-side rendering with async data, use `AsyncStatelessComponent` or `PreloadStateMixin` instead of `FutureBuilder`.
+  </Accordion>
+
+  <Accordion title="Handle all connection states">
+    Always handle `waiting`, `done`, `error`, and data states in your builder.
+  </Accordion>
+
+  <Accordion title="Provide initial data when possible">
+    Use `initialData` to ensure the first frame shows meaningful content.
+  </Accordion>
+</AccordionGroup>
+
+## Related Components
+
+- [StatefulComponent](/api/components/stateful) - For components with mutable state
+- [StatelessComponent](/api/components/stateless) - For components without mutable state

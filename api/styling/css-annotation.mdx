@@ -1,0 +1,403 @@
+---
+title: "@css Annotation"
+description: Define global CSS styles with type-safe selectors and rules
+---
+
+The `@css` annotation marks global style definitions that are processed at compile-time and rendered as global CSS rules.
+
+## Overview
+
+The `@css` annotation provides a type-safe way to define CSS rules with selectors, nested rules, media queries, and other CSS at-rules. It must be used on global variables, global getters, static fields, or static getters.
+
+## Basic Usage
+
+```dart
+import 'package:jaspr/jaspr.dart';
+
+@css
+final styles = [
+  css('.my-class').styles(
+    padding: Padding.all(16.px),
+    backgroundColor: Colors.blue,
+  ),
+];
+```
+
+## API Reference
+
+### css() Method
+
+Create a style rule with a selector:
+
+```dart
+css(String selector, [List<StyleRule> children = const []])
+```
+
+<ParamField path="selector" type="String" required>
+  Any valid CSS selector string.
+  
+  ```dart
+  css('.class-name')
+  css('#element-id')
+  css('div > p')
+  css('[data-active="true"]')
+  ```
+</ParamField>
+
+<ParamField path="children" type="List<StyleRule>">
+  Optional nested rules. Use `&` to reference the parent selector.
+  
+  ```dart
+  css('.button', [
+    css('&:hover').styles(backgroundColor: Colors.blue),
+    css('& > span').styles(fontSize: 14.px),
+  ])
+  ```
+</ParamField>
+
+## Defining Styles
+
+Chain `.styles()` to add CSS properties:
+
+```dart
+@css
+final styles = [
+  css('.container').styles(
+    maxWidth: 1200.px,
+    margin: Margin.symmetric(horizontal: Unit.auto),
+    padding: Padding.all(20.px),
+  ),
+];
+```
+
+## Nested Rules
+
+Use the `&` symbol to reference the parent selector:
+
+```dart
+@css
+final styles = [
+  css('.button', [
+    css('&').styles(
+      padding: Padding.symmetric(horizontal: 16.px, vertical: 8.px),
+      backgroundColor: Colors.blue,
+      color: Colors.white,
+      border: Border.none(),
+    ),
+    css('&:hover').styles(
+      backgroundColor: Colors.blue.shade700,
+    ),
+    css('&:active').styles(
+      backgroundColor: Colors.blue.shade800,
+    ),
+    css('&.disabled').styles(
+      opacity: 0.5,
+      cursor: Cursor.notAllowed,
+    ),
+  ]),
+];
+```
+
+Compiles to:
+```css
+.button {
+  padding: 16px 8px;
+  background-color: blue;
+  color: white;
+  border: none;
+}
+.button:hover {
+  background-color: #1565c0;
+}
+.button:active {
+  background-color: #0d47a1;
+}
+.button.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+```
+
+## Media Queries
+
+Define responsive styles with media queries:
+
+```dart
+@css
+final styles = [
+  css('.container').styles(
+    padding: Padding.all(20.px),
+  ),
+  
+  css.media(MediaQuery.screen(minWidth: 768.px), [
+    css('.container').styles(
+      padding: Padding.all(40.px),
+    ),
+  ]),
+  
+  css.media(MediaQuery.screen(minWidth: 1024.px), [
+    css('.container').styles(
+      maxWidth: 1200.px,
+      margin: Margin.symmetric(horizontal: Unit.auto),
+    ),
+  ]),
+];
+```
+
+### MediaQuery Options
+
+```dart
+MediaQuery.screen({
+  Unit? minWidth,
+  Unit? maxWidth,
+  Unit? minHeight,
+  Unit? maxHeight,
+  Orientation? orientation,
+  bool? canHover,
+  String? aspectRatio,
+  ColorScheme? prefersColorScheme,
+  Contrast? prefersContrast,
+})
+
+MediaQuery.print({...})  // For print styles
+MediaQuery.all({...})     // All media types
+MediaQuery.not(MediaQuery query)  // Negate query
+MediaQuery.any(List<MediaQuery> queries)  // Combine queries
+```
+
+### Examples
+
+```dart
+// Dark mode
+css.media(
+  MediaQuery.screen(prefersColorScheme: ColorScheme.dark),
+  [
+    css('body').styles(
+      backgroundColor: Colors.grey.shade900,
+      color: Colors.white,
+    ),
+  ],
+)
+
+// Orientation
+css.media(
+  MediaQuery.screen(orientation: Orientation.landscape),
+  [
+    css('.video').styles(
+      width: 100.vw,
+      height: 100.vh,
+    ),
+  ],
+)
+
+// High contrast
+css.media(
+  MediaQuery.screen(prefersContrast: Contrast.more),
+  [
+    css('.text').styles(
+      fontWeight: FontWeight.bold,
+    ),
+  ],
+)
+```
+
+## Font Faces
+
+Define custom fonts:
+
+```dart
+@css
+final styles = [
+  css.fontFace(
+    family: 'Roboto',
+    style: FontStyle.normal,
+    url: '/fonts/Roboto-Regular.ttf',
+  ),
+  css.fontFace(
+    family: 'Roboto',
+    style: FontStyle.italic,
+    url: '/fonts/Roboto-Italic.ttf',
+  ),
+];
+```
+
+## Import External Stylesheets
+
+```dart
+@css
+final styles = [
+  css.import('/styles/reset.css'),
+  css.import('https://fonts.googleapis.com/css2?family=Roboto'),
+];
+```
+
+## Keyframe Animations
+
+Define CSS animations:
+
+```dart
+@css
+final styles = [
+  css.keyframes('fadeIn', {
+    '0%': Styles(opacity: 0),
+    '100%': Styles(opacity: 1),
+  }),
+  
+  css('.fade-in').styles(
+    animation: Animation(
+      name: 'fadeIn',
+      duration: Duration(milliseconds: 300),
+      timingFunction: TimingFunction.easeIn,
+    ),
+  ),
+];
+```
+
+## Layer Rules
+
+Define cascade layers:
+
+```dart
+@css
+final styles = [
+  css.layer([
+    css('.base').styles(
+      fontSize: 16.px,
+    ),
+  ], name: 'base'),
+  
+  css.layer([
+    css('.theme').styles(
+      color: Colors.blue,
+    ),
+  ], name: 'theme'),
+];
+```
+
+## Supports Queries
+
+Feature detection:
+
+```dart
+@css
+final styles = [
+  css.supports('display: grid', [
+    css('.container').styles(
+      display: Display.grid,
+    ),
+  ]),
+];
+```
+
+## Complex Example
+
+```dart
+import 'package:jaspr/jaspr.dart';
+
+@css
+final appStyles = [
+  // Import reset
+  css.import('/styles/reset.css'),
+  
+  // Custom font
+  css.fontFace(
+    family: 'Inter',
+    url: '/fonts/Inter-Regular.woff2',
+  ),
+  
+  // Base styles
+  css('body').styles(
+    fontFamily: FontFamily('Inter, sans-serif'),
+    fontSize: 16.px,
+    lineHeight: 1.5,
+    color: Colors.grey.shade900,
+  ),
+  
+  // Button component
+  css('.btn', [
+    css('&').styles(
+      display: Display.inlineBlock,
+      padding: Padding.symmetric(horizontal: 24.px, vertical: 12.px),
+      fontSize: 16.px,
+      fontWeight: FontWeight.w500,
+      textAlign: TextAlign.center,
+      border: Border.none(),
+      radius: BorderRadius.all(Radius.circular(6.px)),
+      cursor: Cursor.pointer,
+      transition: Transition(
+        property: 'all',
+        duration: Duration(milliseconds: 200),
+      ),
+    ),
+    css('&.btn-primary').styles(
+      backgroundColor: Colors.blue,
+      color: Colors.white,
+    ),
+    css('&.btn-primary:hover').styles(
+      backgroundColor: Colors.blue.shade700,
+    ),
+    css('&:disabled').styles(
+      opacity: 0.5,
+      cursor: Cursor.notAllowed,
+    ),
+  ]),
+  
+  // Responsive container
+  css('.container').styles(
+    width: 100.percent,
+    padding: Padding.symmetric(horizontal: 20.px),
+  ),
+  
+  css.media(MediaQuery.screen(minWidth: 768.px), [
+    css('.container').styles(
+      maxWidth: 720.px,
+      margin: Margin.symmetric(horizontal: Unit.auto),
+    ),
+  ]),
+  
+  css.media(MediaQuery.screen(minWidth: 1024.px), [
+    css('.container').styles(
+      maxWidth: 960.px,
+    ),
+  ]),
+  
+  // Dark mode
+  css.media(
+    MediaQuery.screen(prefersColorScheme: ColorScheme.dark),
+    [
+      css('body').styles(
+        backgroundColor: Colors.grey.shade900,
+        color: Colors.grey.shade100,
+      ),
+    ],
+  ),
+];
+```
+
+## Usage in Components
+
+Styles defined with `@css` are automatically injected globally. Reference them using class names:
+
+```dart
+class MyButton extends StatelessComponent {
+  @override
+  Component build(BuildContext context) {
+    return button(
+      [Component.text('Click Me')],
+      classes: 'btn btn-primary',
+    );
+  }
+}
+```
+
+## Restrictions
+
+- Must be used on global variables, global getters, static fields, or static getters
+- Must be of type `List<StyleRule>`
+- Cannot be used on instance fields or local variables
+
+## See Also
+
+- [Styles Class](/api/styling/styles) - Inline styles API
+- [Style Component](/api/styling/style-component) - Render style rules as components
+- [Styling Guide](/guides/styling) - Complete styling guide

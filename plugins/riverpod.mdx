@@ -1,0 +1,367 @@
+---
+title: jaspr_riverpod
+description: Riverpod state management with server-client synchronization
+---
+
+A port of flutter_riverpod for Jaspr, based on Riverpod 3 with full provider support and quality-of-life improvements.
+
+## Installation
+
+```bash
+dart pub add jaspr_riverpod
+```
+
+**Current version:** 0.4.4
+
+## Key Differences from flutter_riverpod
+
+- No `Consumer` or `ConsumerWidget` - use `context.watch()` directly
+- Additional `sync` option to synchronize providers between server and client
+- Works with any component type (no special base classes required)
+
+## Basic Usage
+
+### Defining Providers
+
+Define providers the same way as in Riverpod:
+
+```dart
+import 'package:jaspr_riverpod/jaspr_riverpod.dart';
+
+// Simple provider
+final counterProvider = StateProvider<int>((ref) => 0);
+
+// Future provider
+final userProvider = FutureProvider<User>((ref) async {
+  final response = await http.get('/api/user');
+  return User.fromJson(response);
+});
+
+// Notifier provider
+class TodosNotifier extends Notifier<List<Todo>> {
+  @override
+  List<Todo> build() => [];
+  
+  void addTodo(Todo todo) {
+    state = [...state, todo];
+  }
+  
+  void removeTodo(String id) {
+    state = state.where((t) => t.id != id).toList();
+  }
+}
+
+final todosProvider = NotifierProvider<TodosNotifier, List<Todo>>(
+  () => TodosNotifier(),
+);
+```
+
+### Accessing Providers
+
+Access providers using context extensions on any component:
+
+```dart
+class MyComponent extends StatelessComponent {
+  @override
+  Component build(BuildContext context) {
+    // Watch provider - rebuilds on changes
+    final counter = context.watch(counterProvider);
+    
+    return div([
+      text('Counter: $counter'),
+      button(
+        onClick: () {
+          // Read provider - doesn't rebuild
+          context.read(counterProvider.notifier).state++;
+        },
+        [text('Increment')],
+      ),
+    ]);
+  }
+}
+```
+
+### Context Extension Methods
+
+All standard Riverpod methods are available on `BuildContext`:
+
+```dart
+// Watch - rebuilds when value changes
+final value = context.watch(myProvider);
+
+// Read - one-time read without rebuilding
+final value = context.read(myProvider);
+
+// Listen - execute callback on changes
+context.listen(myProvider, (prev, next) {
+  print('Value changed from $prev to $next');
+});
+
+// Listen manually - for more control
+context.listenManual(myProvider, (prev, next) {
+  // Custom logic
+});
+
+// Invalidate - force provider refresh
+context.invalidate(myProvider);
+
+// Refresh - get fresh value
+final value = context.refresh(myProvider);
+
+// Exists - check if provider is initialized
+final exists = context.exists(myProvider);
+```
+
+### Provider Scope
+
+Wrap your app with `ProviderScope`:
+
+```dart
+class App extends StatelessComponent {
+  @override
+  Component build(BuildContext context) {
+    return ProviderScope(
+      child: Home(),
+    );
+  }
+}
+```
+
+## Builder Pattern for Selective Rebuilds
+
+Use `Builder` to limit rebuilds to specific parts of your component tree:
+
+```dart
+class MyComponent extends StatelessComponent {
+  @override
+  Component build(BuildContext context) {
+    return div([
+      text('This does not rebuild'),
+      Builder(
+        builder: (context) {
+          // Only this part rebuilds when counter changes
+          final counter = context.watch(counterProvider);
+          return text('Counter: $counter');
+        },
+      ),
+    ]);
+  }
+}
+```
+
+## Syncing Provider State (Server to Client)
+
+One of jaspr_riverpod's unique features is the ability to sync provider state from server to client:
+
+```dart
+final userProvider = FutureProvider<User>((ref) async {
+  // Fetch user from database
+  return await db.getUser();
+});
+
+@override
+Component build(BuildContext context) {
+  return ProviderScope(
+    sync: [
+      userProvider.syncWith('user'),
+    ],
+    child: MyApp(),
+  );
+}
+```
+
+### How Syncing Works
+
+1. During server-side rendering, the provider value is read and serialized
+2. The value is embedded in the HTML sent to the client
+3. On the client, the value is deserialized
+4. The provider is overridden with the server value
+5. Accessing the provider on the client returns the server value immediately
+
+### Sync Configuration
+
+The `syncWith()` method accepts:
+
+```dart
+provider.syncWith(
+  'unique-key',  // Required: unique identifier
+  codec: myCodec,  // Optional: for complex types
+)
+```
+
+**Codec** is only needed for non-serializable types. Built-in types (String, numbers, bool, Map, List) work automatically.
+
+### Custom Codec Example
+
+```dart
+class UserCodec extends Codec<User, Map<String, dynamic>> {
+  @override
+  Map<String, dynamic> encode(User user) => user.toJson();
+  
+  @override
+  User decode(Map<String, dynamic> json) => User.fromJson(json);
+}
+
+final userProvider = StateProvider<User>((ref) => User.guest());
+
+provider.syncWith('user', codec: UserCodec());
+```
+
+### Supported Provider Types
+
+The following providers support syncing:
+
+- `NotifierProvider`
+- `AsyncNotifierProvider`
+- `Provider`
+- `FutureProvider`
+- `StreamProvider`
+- `StateProvider`
+
+### Awaiting Async Providers
+
+When syncing async providers (`FutureProvider`, `StreamProvider`, `AsyncNotifier`), the `ProviderScope` waits for them to complete before rendering on the server:
+
+```dart
+final dataProvider = FutureProvider<Data>((ref) async {
+  await Future.delayed(Duration(seconds: 2));
+  return Data(...);
+});
+
+ProviderScope(
+  sync: [dataProvider.syncWith('data')],
+  child: Builder(
+    builder: (context) {
+      // This will be the loaded data, not AsyncLoading
+      final data = context.watch(dataProvider);
+      return text(data.value.toString());
+    },
+  ),
+)
+```
+
+## Provider Scoping
+
+Sync overrides only propagate when defined on the root `ProviderScope`. For scoped providers, set dependencies:
+
+```dart
+final scopedProvider = Provider<String>((ref) {
+  return 'scoped value';
+});
+
+ProviderScope(
+  sync: [
+    scopedProvider.syncWith('scoped', dependencies: [parentProvider]),
+  ],
+  child: ...,
+)
+```
+
+Learn more about [scoping providers in Riverpod](https://riverpod.dev/docs/concepts2/scoping).
+
+## Family Providers
+
+Use family providers for parameterized state:
+
+```dart
+final todoProvider = FutureProvider.family<Todo, String>((ref, id) async {
+  return await api.getTodo(id);
+});
+
+// In component
+final todo = context.watch(todoProvider('123'));
+```
+
+## Auto Dispose
+
+Automatically dispose providers when no longer used:
+
+```dart
+final tempDataProvider = Provider.autoDispose<Data>((ref) {
+  final data = Data();
+  
+  // Cleanup when disposed
+  ref.onDispose(() {
+    data.dispose();
+  });
+  
+  return data;
+});
+```
+
+## Why Context Extensions?
+
+Context extensions (`context.watch`) offer several advantages:
+
+- Less boilerplate (no special widget types)
+- More flexible (works with any component)
+- Easier to use (natural API)
+
+This wasn't possible in Flutter due to [InheritedWidget limitations](https://github.com/flutter/flutter/issues/62861). Jaspr fixed these core framework issues, making `context.watch` feasible.
+
+## Complete Example
+
+```dart
+import 'package:jaspr/jaspr.dart';
+import 'package:jaspr_riverpod/jaspr_riverpod.dart';
+
+// Providers
+final counterProvider = StateProvider<int>((ref) => 0);
+
+final userProvider = FutureProvider<User>((ref) async {
+  return await fetchUser();
+});
+
+class CounterNotifier extends Notifier<int> {
+  @override
+  int build() => 0;
+  
+  void increment() => state++;
+  void decrement() => state--;
+}
+
+final counterNotifierProvider = NotifierProvider<CounterNotifier, int>(
+  () => CounterNotifier(),
+);
+
+// App
+class App extends StatelessComponent {
+  @override
+  Component build(BuildContext context) {
+    return ProviderScope(
+      sync: [
+        userProvider.syncWith('user'),
+      ],
+      child: Home(),
+    );
+  }
+}
+
+class Home extends StatelessComponent {
+  @override
+  Component build(BuildContext context) {
+    final counter = context.watch(counterNotifierProvider);
+    final user = context.watch(userProvider);
+    
+    return div([
+      h1([text('Hello ${user.value?.name ?? "Guest"}')]),
+      p([text('Counter: $counter')]),
+      button(
+        onClick: () => context.read(counterNotifierProvider.notifier).increment(),
+        [text('+')],
+      ),
+      button(
+        onClick: () => context.read(counterNotifierProvider.notifier).decrement(),
+        [text('-')],
+      ),
+    ]);
+  }
+}
+```
+
+## Resources
+
+- [GitHub Repository](https://github.com/schultek/jaspr/tree/main/packages/jaspr_riverpod)
+- [API Documentation](https://pub.dev/documentation/jaspr_riverpod)
+- [Riverpod Official Docs](https://riverpod.dev)
+- [Issue Tracker](https://github.com/schultek/jaspr/issues)

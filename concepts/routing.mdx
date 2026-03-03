@@ -1,0 +1,456 @@
+---
+title: Routing
+description: Learn how to implement navigation and routing in your Jaspr application
+---
+
+Jaspr provides client-side routing through the `jaspr_router` package, enabling navigation between pages without full page reloads. The router works seamlessly on both client and server, supporting SSR and hydration.
+
+## Installation
+
+Add `jaspr_router` to your `pubspec.yaml`:
+
+```yaml
+dependencies:
+  jaspr: ^0.x.x
+  jaspr_router: ^0.x.x
+```
+
+## Basic Setup
+
+Define your routes using the `Router` component:
+
+```dart
+import 'package:jaspr/jaspr.dart';
+import 'package:jaspr_router/jaspr_router.dart';
+
+class App extends StatelessComponent {
+  @override
+  Component build(BuildContext context) {
+    return Router(
+      routes: [
+        Route(
+          path: '/',
+          title: 'Home',
+          builder: (context, state) => HomePage(),
+        ),
+        Route(
+          path: '/about',
+          title: 'About',
+          builder: (context, state) => AboutPage(),
+        ),
+        Route(
+          path: '/contact',
+          title: 'Contact',
+          builder: (context, state) => ContactPage(),
+        ),
+      ],
+    );
+  }
+}
+```
+
+## Route Definition
+
+Each route requires a path and a builder function:
+
+```dart
+Route(
+  path: '/users/:id',           // Path with parameter
+  title: 'User Profile',         // Page title
+  builder: (context, state) {    // Builder function
+    return UserProfile(
+      userId: state.pathParameters['id']!,
+    );
+  },
+)
+```
+
+**Route properties:**
+- `path` - URL path (supports parameters)
+- `title` - Page title (sets `<title>` tag)
+- `builder` - Function that returns the component to render
+- `routes` - Nested child routes
+- `redirect` - Redirect to another path
+
+## Navigation
+
+### Using Link Component
+
+The `Link` component provides client-side navigation without page reloads:
+
+```dart
+import 'package:jaspr_router/jaspr_router.dart';
+
+Link(
+  to: '/about',
+  [text('Go to About')],
+)
+```
+
+**Link properties:**
+
+```dart
+Link(
+  to: '/users/123',              // Target URL
+  replace: false,                 // Replace instead of push
+  extra: {'source': 'menu'},     // Extra data to pass
+  preload: true,                  // Preload on hover
+  target: Target.self,            // Link target
+  classes: 'nav-link',           // CSS classes
+  styles: Styles(...),            // Inline styles
+  child: text('View User'),       // Single child
+  // or
+  children: [/* multiple */],     // Multiple children
+)
+```
+
+<Tip>
+Links automatically preload their target route when hovered (if `preload: true`), improving perceived performance.
+</Tip>
+
+### Programmatic Navigation
+
+Navigate programmatically using the `Router` methods:
+
+```dart
+class MyButton extends StatelessComponent {
+  @override
+  Component build(BuildContext context) {
+    return button(
+      events: {
+        'click': (_) {
+          // Push a new route
+          Router.of(context).push('/about');
+          
+          // Or replace current route
+          Router.of(context).replace('/login');
+          
+          // Go back
+          Router.of(context).back();
+        },
+      },
+      [text('Navigate')],
+    );
+  }
+}
+```
+
+**Router methods:**
+- `push(path)` - Navigate to a new route
+- `replace(path)` - Replace the current route
+- `back()` - Go back in history
+- `preload(path)` - Preload a route
+
+## Path Parameters
+
+Define dynamic segments in your routes:
+
+```dart
+Route(
+  path: '/users/:userId/posts/:postId',
+  builder: (context, state) {
+    final userId = state.pathParameters['userId']!;
+    final postId = state.pathParameters['postId']!;
+    
+    return PostDetail(
+      userId: userId,
+      postId: postId,
+    );
+  },
+)
+```
+
+Access parameters from `state.pathParameters`.
+
+## Query Parameters
+
+Access query parameters from the route state:
+
+```dart
+Route(
+  path: '/search',
+  builder: (context, state) {
+    final query = state.uri.queryParameters['q'] ?? '';
+    final page = state.uri.queryParameters['page'] ?? '1';
+    
+    return SearchResults(
+      query: query,
+      page: int.parse(page),
+    );
+  },
+)
+```
+
+Navigate with query parameters:
+
+```dart
+Router.of(context).push('/search?q=jaspr&page=2')
+```
+
+## Nested Routes
+
+Create nested routing structures:
+
+```dart
+Route(
+  path: '/dashboard',
+  builder: (context, state) => DashboardLayout(),
+  routes: [
+    Route(
+      path: 'overview',
+      builder: (context, state) => OverviewPage(),
+    ),
+    Route(
+      path: 'settings',
+      builder: (context, state) => SettingsPage(),
+    ),
+    Route(
+      path: 'profile',
+      builder: (context, state) => ProfilePage(),
+    ),
+  ],
+)
+```
+
+URLs will be:
+- `/dashboard/overview`
+- `/dashboard/settings`
+- `/dashboard/profile`
+
+## Redirects
+
+Redirect from one path to another:
+
+```dart
+Route(
+  path: '/old-path',
+  redirect: (context, state) => '/new-path',
+)
+```
+
+Conditional redirects:
+
+```dart
+Route(
+  path: '/admin',
+  redirect: (context, state) {
+    final isLoggedIn = checkAuth();
+    return isLoggedIn ? null : '/login';
+  },
+  builder: (context, state) => AdminPanel(),
+)
+```
+
+Return `null` to continue to the route, or return a path to redirect.
+
+## 404 Pages
+
+Handle unknown routes with a catch-all route:
+
+```dart
+Router(
+  routes: [
+    // ... your routes
+    
+    // Catch-all route (must be last)
+    Route(
+      path: '/:_(.*)',
+      builder: (context, state) => NotFoundPage(),
+    ),
+  ],
+)
+```
+
+## Passing Data Between Routes
+
+Pass extra data when navigating:
+
+```dart
+// Navigate with data
+Router.of(context).push(
+  '/user/profile',
+  extra: UserData(id: '123', name: 'Alice'),
+);
+
+// Access in target route
+Route(
+  path: '/user/profile',
+  builder: (context, state) {
+    final userData = state.extra as UserData?;
+    return UserProfile(data: userData);
+  },
+)
+```
+
+## Router State
+
+Access the current router state:
+
+```dart
+final state = RouterState.of(context);
+
+// Current location
+final uri = state.uri;           // Uri object
+final path = state.uri.path;     // Current path
+
+// Path parameters
+final userId = state.pathParameters['userId'];
+
+// Query parameters
+final search = state.uri.queryParameters['q'];
+
+// Extra data
+final extra = state.extra;
+```
+
+## Complete Example
+
+A full routing setup:
+
+```dart
+import 'package:jaspr/jaspr.dart';
+import 'package:jaspr_router/jaspr_router.dart';
+
+class App extends StatelessComponent {
+  @override
+  Component build(BuildContext context) {
+    return Router(
+      routes: [
+        Route(
+          path: '/',
+          title: 'Home',
+          builder: (context, state) => HomePage(),
+        ),
+        Route(
+          path: '/blog',
+          builder: (context, state) => BlogLayout(),
+          routes: [
+            Route(
+              path: '',
+              title: 'Blog',
+              builder: (context, state) => BlogList(),
+            ),
+            Route(
+              path: ':slug',
+              builder: (context, state) {
+                final slug = state.pathParameters['slug']!;
+                return BlogPost(slug: slug);
+              },
+            ),
+          ],
+        ),
+        Route(
+          path: '/about',
+          title: 'About',
+          builder: (context, state) => AboutPage(),
+        ),
+        Route(
+          path: '/:_(.*)',
+          title: '404',
+          builder: (context, state) => NotFoundPage(),
+        ),
+      ],
+    );
+  }
+}
+
+class HomePage extends StatelessComponent {
+  @override
+  Component build(BuildContext context) {
+    return div([
+      h1([text('Welcome')]),
+      nav([
+        Link(to: '/', [text('Home')]),
+        Link(to: '/blog', [text('Blog')]),
+        Link(to: '/about', [text('About')]),
+      ]),
+    ]);
+  }
+}
+
+class BlogPost extends StatelessComponent {
+  const BlogPost({required this.slug, super.key});
+  
+  final String slug;
+
+  @override
+  Component build(BuildContext context) {
+    return div([
+      Link(
+        to: '/blog',
+        [text('← Back to Blog')],
+      ),
+      h1([text('Post: $slug')]),
+      // ... post content
+    ]);
+  }
+}
+```
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Use descriptive route paths">
+    Make URLs meaningful and SEO-friendly:
+    
+    ```dart
+    // Good
+    Route(path: '/blog/how-to-use-jaspr')
+    
+    // Avoid
+    Route(path: '/p/123')
+    ```
+  </Accordion>
+
+  <Accordion title="Set page titles">
+    Always set the `title` property for better SEO and user experience:
+    
+    ```dart
+    Route(
+      path: '/about',
+      title: 'About Us - My App',
+      builder: (context, state) => AboutPage(),
+    )
+    ```
+  </Accordion>
+
+  <Accordion title="Handle loading states">
+    Show loading indicators during navigation:
+    
+    ```dart
+    Route(
+      path: '/users/:id',
+      builder: (context, state) => UserLoader(
+        userId: state.pathParameters['id']!,
+      ),
+    )
+    ```
+  </Accordion>
+
+  <Accordion title="Preload critical routes">
+    Preload routes that users are likely to visit:
+    
+    ```dart
+    @override
+    void initState() {
+      super.initState();
+      // Preload important routes
+      Router.of(context).preload('/dashboard');
+    }
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Related
+
+<CardGroup cols={2}>
+  <Card title="Components" icon="puzzle-piece" href="/concepts/components">
+    Learn about component basics
+  </Card>
+  <Card title="Data Fetching" icon="database" href="/concepts/data-fetching">
+    Fetch data for your routes
+  </Card>
+  <Card title="SEO" icon="magnifying-glass" href="/concepts/seo">
+    Optimize routes for search engines
+  </Card>
+</CardGroup>

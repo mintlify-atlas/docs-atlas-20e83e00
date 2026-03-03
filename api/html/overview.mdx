@@ -1,0 +1,178 @@
+---
+title: HTML Elements Overview
+description: Overview of HTML rendering in Jaspr using components and DOM elements
+---
+
+Jaspr provides a comprehensive set of HTML components and utilities for building web applications. The framework includes pre-built components for all standard HTML elements, as well as low-level utilities for custom element creation.
+
+## Component Types
+
+Jaspr offers three main approaches for rendering HTML:
+
+### 1. Pre-built HTML Components
+
+Type-safe components for standard HTML elements like `div`, `span`, `button`, etc. Each component class corresponds to a specific HTML tag.
+
+```dart
+import 'package:jaspr/html.dart';
+
+div(
+  [Component.text('Hello World')],
+  id: 'container',
+  classes: 'my-class',
+  styles: Styles(padding: Padding.all(16.px)),
+)
+```
+
+### 2. DomComponent (Low-Level)
+
+The `Component.element()` factory provides direct access to create any HTML element with full control over attributes, styles, and events.
+
+```dart
+Component.element(
+  tag: 'div',
+  id: 'container',
+  classes: 'my-class',
+  styles: Styles(backgroundColor: Colors.blue),
+  attributes: {'data-id': '123'},
+  events: {'click': (event) => print('Clicked!')},
+  children: [
+    Component.text('Hello World'),
+  ],
+)
+```
+
+### 3. Text Component
+
+For rendering plain text nodes:
+
+```dart
+Component.text('Hello World')
+```
+
+## Common Properties
+
+All HTML components share these common properties:
+
+<ParamField path="id" type="String?">
+  The HTML id attribute. Must be unique within the document.
+</ParamField>
+
+<ParamField path="classes" type="String?">
+  CSS class names separated by whitespace.
+</ParamField>
+
+<ParamField path="styles" type="Styles?">
+  Inline styles using the type-safe `Styles` class. See [Styles API](/api/styling/styles).
+</ParamField>
+
+<ParamField path="attributes" type="Map<String, String>?">
+  Additional HTML attributes as key-value pairs.
+</ParamField>
+
+<ParamField path="events" type="Map<String, EventCallback>?">
+  Event listeners where keys are event names (e.g., 'click', 'submit') and values are callbacks.
+</ParamField>
+
+<ParamField path="children" type="List<Component>?">
+  Child components to render inside this element.
+</ParamField>
+
+<ParamField path="key" type="Key?">
+  Optional key for component identity and state preservation.
+</ParamField>
+
+## Available HTML Components
+
+Jaspr includes components for all standard HTML elements:
+
+### Text Elements
+- `a`, `b`, `br`, `code`, `em`, `i`, `s`, `small`, `span`, `strong`, `u`, `wbr`
+
+See: [Text Components](/api/html/text)
+
+### Content Sections
+- `article`, `aside`, `div`, `footer`, `header`, `main`, `nav`, `section`, `h1`-`h6`, `p`
+
+### Forms
+- `form`, `input`, `button`, `select`, `textarea`, `label`, `fieldset`, `legend`
+
+### Media
+- `img`, `video`, `audio`, `canvas`, `svg`
+
+### Tables
+- `table`, `thead`, `tbody`, `tr`, `td`, `th`
+
+### Lists
+- `ul`, `ol`, `li`, `dl`, `dt`, `dd`
+
+## Example: Complete Component
+
+```dart
+import 'package:jaspr/jaspr.dart';
+import 'package:jaspr/html.dart';
+
+class UserCard extends StatelessComponent {
+  const UserCard({
+    required this.name,
+    required this.email,
+    super.key,
+  });
+
+  final String name;
+  final String email;
+
+  @override
+  Component build(BuildContext context) {
+    return div(
+      [
+        h2([Component.text(name)]),
+        p(
+          [Component.text(email)],
+          styles: Styles(color: Colors.grey),
+        ),
+        button(
+          [Component.text('Contact')],
+          onClick: () => print('Contact $name'),
+        ),
+      ],
+      classes: 'user-card',
+      styles: Styles(
+        padding: Padding.all(16.px),
+        border: Border.all(BorderSide(color: Colors.grey, width: 1.px)),
+        radius: BorderRadius.all(Radius.circular(8.px)),
+      ),
+    );
+  }
+}
+```
+
+## Event Handling
+
+Event callbacks receive the native browser event object:
+
+```dart
+button(
+  [Component.text('Click Me')],
+  onClick: () {
+    print('Button clicked!');
+  },
+)
+
+// Access event details
+input(
+  [],
+  events: {
+    'input': (event) {
+      final value = (event.target as web.HTMLInputElement).value;
+      print('Input value: $value');
+    },
+  },
+)
+```
+
+## See Also
+
+- [Text Components](/api/html/text) - Text-level semantic elements
+- [DomComponent API](/api/html/dom-component) - Low-level element creation
+- [Styles API](/api/styling/styles) - Type-safe CSS styling

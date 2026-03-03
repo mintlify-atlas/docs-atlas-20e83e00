@@ -1,0 +1,490 @@
+---
+title: Data Fetching
+description: Learn how to load and manage asynchronous data in Jaspr components
+---
+
+Jaspr provides multiple patterns for fetching and managing asynchronous data in your components. The framework supports both client-side and server-side data fetching, with built-in support for preloading data during server-side rendering.
+
+## FutureBuilder
+
+The `FutureBuilder` component helps manage asynchronous operations that return a `Future`:
+
+```dart
+import 'package:jaspr/jaspr.dart';
+
+class UserProfile extends StatelessComponent {
+  const UserProfile({required this.userId, super.key});
+  
+  final String userId;
+  
+  Future<User> fetchUser() async {
+    final response = await http.get('/api/users/$userId');
+    return User.fromJson(response.data);
+  }
+
+  @override
+  Component build(BuildContext context) {
+    return FutureBuilder<User>(
+      future: fetchUser(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return div([text('Loading...')]);
+        }
+        
+        if (snapshot.hasError) {
+          return div([text('Error: ${snapshot.error}')]);
+        }
+        
+        if (snapshot.hasData) {
+          final user = snapshot.data!;
+          return div([
+            h1([text(user.name)]),
+            p([text(user.email)]),
+          ]);
+        }
+        
+        return div([text('No data')]);
+      },
+    );
+  }
+}
+```
+
+**AsyncSnapshot states:**
+- `ConnectionState.none` - No async operation started
+- `ConnectionState.waiting` - Future is running
+- `ConnectionState.done` - Future completed
+
+**AsyncSnapshot properties:**
+- `connectionState` - Current state of the async operation
+- `hasData` - Whether data is available
+- `hasError` - Whether an error occurred
+- `data` - The result data (if available)
+- `error` - The error (if any)
+
+<Warning>
+Create futures outside the `build` method or use `PreloadStateMixin` to avoid refetching on every rebuild.
+</Warning>
+
+## StreamBuilder
+
+For continuous data streams, use `StreamBuilder`:
+
+```dart
+import 'package:jaspr/jaspr.dart';
+
+class LiveCounter extends StatefulComponent {
+  @override
+  State<LiveCounter> createState() => _LiveCounterState();
+}
+
+class _LiveCounterState extends State<LiveCounter> {
+  Stream<int> counterStream() async* {
+    int count = 0;
+    while (true) {
+      await Future.delayed(Duration(seconds: 1));
+      yield count++;
+    }
+  }
+
+  @override
+  Component build(BuildContext context) {
+    return StreamBuilder<int>(
+      stream: counterStream(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return text('Initializing...');
+        }
+        
+        if (snapshot.connectionState == ConnectionState.active) {
+          if (snapshot.hasData) {
+            return text('Count: ${snapshot.data}');
+          }
+          if (snapshot.hasError) {
+            return text('Error: ${snapshot.error}');
+          }
+        }
+        
+        if (snapshot.connectionState == ConnectionState.done) {
+          return text('Stream closed');
+        }
+        
+        return text('Unknown state');
+      },
+    );
+  }
+}
+```
+
+**Stream states:**
+- `ConnectionState.waiting` - Waiting for first value
+- `ConnectionState.active` - Stream is emitting values
+- `ConnectionState.done` - Stream has closed
+
+## Preloading State on Server
+
+For server-side rendering, preload data before the first build using `PreloadStateMixin`:
+
+```dart
+import 'package:jaspr/jaspr.dart';
+
+class ArticlePage extends StatefulComponent {
+  const ArticlePage({required this.articleId, super.key});
+  
+  final String articleId;
+
+  @override
+  State<ArticlePage> createState() => _ArticlePageState();
+}
+
+class _ArticlePageState extends State<ArticlePage> 
+    with PreloadStateMixin<ArticlePage> {
+  
+  Article? article;
+  
+  @override
+  Future<void> preloadState() async {
+    // This runs on the server before the first build
+    final response = await http.get('/api/articles/${widget.articleId}');
+    article = Article.fromJson(response.data);
+  }
+  
+  @override
+  Component build(BuildContext context) {
+    if (article == null) {
+      return div([text('Loading...')]);
+    }
+    
+    return article([
+      h1([text(article!.title)]),
+      div([text(article!.content)]),
+    ]);
+  }
+}
+```
+
+**How it works:**
+1. On the server, `preloadState()` runs before `initState()`
+2. The component waits for the Future to complete
+3. Then `initState()` and `build()` are called with data ready
+4. The server sends pre-rendered HTML with data
+5. On the client, `preloadState()` is skipped
+
+<Tip>
+Use `PreloadStateMixin` for critical data that should be included in the initial server render for better SEO and perceived performance.
+</Tip>
+
+## Async StatelessComponent
+
+For simple cases, use the `OnFirstBuild` mixin:
+
+```dart
+import 'package:jaspr/jaspr.dart';
+
+class DataLoader extends StatelessComponent with OnFirstBuild {
+  const DataLoader({super.key});
+  
+  @override
+  Future<void> onFirstBuild(BuildContext context) async {
+    // This runs before the first build
+    await loadCriticalData();
+  }
+  
+  @override
+  Component build(BuildContext context) {
+    return div([text('Data loaded!')]);
+  }
+}
+```
+
+## Managing Loading States
+
+Create reusable loading components:
+
+```dart
+class AsyncData<T> extends StatelessComponent {
+  const AsyncData({
+    required this.future,
+    required this.builder,
+    this.loading,
+    this.error,
+    super.key,
+  });
+  
+  final Future<T> future;
+  final Component Function(T data) builder;
+  final Component? loading;
+  final Component Function(Object error)? error;
+  
+  @override
+  Component build(BuildContext context) {
+    return FutureBuilder<T>(
+      future: future,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return loading ?? div([
+            text('Loading...'),
+          ]);
+        }
+        
+        if (snapshot.hasError) {
+          return error?.call(snapshot.error!) ?? div([
+            text('Error: ${snapshot.error}'),
+          ]);
+        }
+        
+        if (snapshot.hasData) {
+          return builder(snapshot.data as T);
+        }
+        
+        return div([text('No data')]);
+      },
+    );
+  }
+}
+
+// Usage
+AsyncData<User>(
+  future: fetchUser('123'),
+  loading: Spinner(),
+  error: (err) => ErrorMessage(error: err),
+  builder: (user) => UserCard(user: user),
+)
+```
+
+## Error Handling
+
+Handle errors gracefully:
+
+```dart
+class SafeDataLoader extends StatefulComponent {
+  @override
+  State<SafeDataLoader> createState() => _SafeDataLoaderState();
+}
+
+class _SafeDataLoaderState extends State<SafeDataLoader> 
+    with PreloadStateMixin<SafeDataLoader> {
+  
+  Object? error;
+  Data? data;
+  
+  @override
+  Future<void> preloadState() async {
+    try {
+      final response = await http.get('/api/data');
+      data = Data.fromJson(response.data);
+    } catch (e) {
+      error = e;
+    }
+  }
+  
+  @override
+  Component build(BuildContext context) {
+    if (error != null) {
+      return ErrorDisplay(
+        error: error!,
+        onRetry: () {
+          setState(() {
+            error = null;
+            data = null;
+          });
+          preloadState();
+        },
+      );
+    }
+    
+    if (data == null) {
+      return LoadingSpinner();
+    }
+    
+    return DataDisplay(data: data!);
+  }
+}
+```
+
+## Caching Strategies
+
+Implement simple caching:
+
+```dart
+class CachedDataLoader extends StatefulComponent {
+  @override
+  State<CachedDataLoader> createState() => _CachedDataLoaderState();
+}
+
+class _CachedDataLoaderState extends State<CachedDataLoader> {
+  static final Map<String, CachedValue> _cache = {};
+  
+  Future<Data> fetchWithCache(String key) async {
+    final cached = _cache[key];
+    
+    // Return cached if fresh (< 5 minutes old)
+    if (cached != null && 
+        DateTime.now().difference(cached.timestamp) < Duration(minutes: 5)) {
+      return cached.data;
+    }
+    
+    // Fetch fresh data
+    final response = await http.get('/api/data/$key');
+    final data = Data.fromJson(response.data);
+    
+    // Update cache
+    _cache[key] = CachedValue(
+      data: data,
+      timestamp: DateTime.now(),
+    );
+    
+    return data;
+  }
+  
+  @override
+  Component build(BuildContext context) {
+    return FutureBuilder<Data>(
+      future: fetchWithCache('my-key'),
+      builder: (context, snapshot) {
+        // ... handle snapshot
+      },
+    );
+  }
+}
+
+class CachedValue {
+  const CachedValue({required this.data, required this.timestamp});
+  final Data data;
+  final DateTime timestamp;
+}
+```
+
+## Pagination Example
+
+```dart
+class PaginatedList extends StatefulComponent {
+  @override
+  State<PaginatedList> createState() => _PaginatedListState();
+}
+
+class _PaginatedListState extends State<PaginatedList> {
+  List<Item> items = [];
+  int page = 1;
+  bool loading = false;
+  bool hasMore = true;
+  
+  @override
+  void initState() {
+    super.initState();
+    loadMore();
+  }
+  
+  Future<void> loadMore() async {
+    if (loading || !hasMore) return;
+    
+    setState(() => loading = true);
+    
+    try {
+      final response = await http.get('/api/items?page=$page&limit=20');
+      final newItems = (response.data as List)
+          .map((json) => Item.fromJson(json))
+          .toList();
+      
+      setState(() {
+        items.addAll(newItems);
+        page++;
+        hasMore = newItems.length == 20;
+        loading = false;
+      });
+    } catch (e) {
+      setState(() => loading = false);
+      // Handle error
+    }
+  }
+  
+  @override
+  Component build(BuildContext context) {
+    return div([
+      ...items.map((item) => ItemCard(item: item)),
+      if (loading)
+        div([text('Loading more...')]),
+      if (!loading && hasMore)
+        button(
+          events: {'click': (_) => loadMore()},
+          [text('Load More')],
+        ),
+    ]);
+  }
+}
+```
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Avoid fetching in build()">
+    Never start async operations directly in the `build()` method. Use `initState()`, `PreloadStateMixin`, or `FutureBuilder`.
+
+    ```dart
+    // Bad
+    @override
+    Component build(BuildContext context) {
+      fetchData(); // Called on every rebuild!
+      return ...
+    }
+
+    // Good
+    @override
+    void initState() {
+      super.initState();
+      fetchData();
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="Cancel ongoing requests">
+    Clean up async operations in `dispose()`:
+
+    ```dart
+    @override
+    void dispose() {
+      _subscription?.cancel();
+      super.dispose();
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="Handle all states">
+    Always handle loading, error, and empty states:
+
+    ```dart
+    if (loading) return LoadingSpinner();
+    if (error != null) return ErrorDisplay(error: error!);
+    if (data.isEmpty) return EmptyState();
+    return DataList(data: data);
+    ```
+  </Accordion>
+
+  <Accordion title="Use PreloadStateMixin for SSR">
+    For better SEO and initial load performance, preload critical data on the server:
+
+    ```dart
+    class _MyState extends State<MyComponent> 
+        with PreloadStateMixin<MyComponent> {
+      @override
+      Future<void> preloadState() async {
+        // Fetch data here
+      }
+    }
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Related
+
+<CardGroup cols={2}>
+  <Card title="Components" icon="puzzle-piece" href="/concepts/components">
+    Learn about StatefulComponent and lifecycle
+  </Card>
+  <Card title="Routing" icon="route" href="/concepts/routing">
+    Fetch data for different routes
+  </Card>
+  <Card title="SEO" icon="magnifying-glass" href="/concepts/seo">
+    Optimize data loading for SEO
+  </Card>
+</CardGroup>

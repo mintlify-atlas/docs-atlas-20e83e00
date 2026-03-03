@@ -1,0 +1,224 @@
+---
+title: Rendering Modes Overview
+description: Understanding SSR, CSR, and SSG rendering modes in Jaspr
+---
+
+Jaspr supports three rendering modes that determine how and when your application is rendered. Each mode has different characteristics and is suited for different use cases.
+
+## Rendering Modes
+
+Jaspr provides three distinct rendering modes:
+
+<CardGroup cols={3}>
+  <Card title="Server-Side Rendering" icon="server" href="/rendering/server-side">
+    Render pages dynamically on the server for each request
+  </Card>
+  <Card title="Client-Side Rendering" icon="browser" href="/rendering/client-side">
+    Render and hydrate components in the browser
+  </Card>
+  <Card title="Static Site Generation" icon="file" href="/rendering/static-sites">
+    Pre-render all pages at build time
+  </Card>
+</CardGroup>
+
+## Choosing a Rendering Mode
+
+The rendering mode is configured in your `jaspr_options.yaml` file:
+
+<CodeGroup>
+```yaml Server Mode
+mode: server
+```
+
+```yaml Static Mode
+mode: static
+```
+</CodeGroup>
+
+<Note>
+Client-side rendering is automatically included when you use the `@client` annotation on components, regardless of your primary rendering mode.
+</Note>
+
+## Mode Comparison
+
+| Feature | Server (SSR) | Static (SSG) | Client (CSR) |
+|---------|--------------|--------------|-------------|
+| **Build Output** | Executable + static assets | HTML files + static assets | Static assets only |
+| **Server Required** | Yes | No | No |
+| **Dynamic Content** | Full support | Build-time only | Full support |
+| **SEO** | Excellent | Excellent | Limited |
+| **Performance** | Fast TTFB | Fastest TTFB | Slower TTFB |
+| **Scalability** | Requires server resources | Highly scalable | Highly scalable |
+| **Use Case** | Dynamic apps, APIs | Blogs, docs, marketing | SPAs, dashboards |
+
+## Server-Side Rendering (SSR)
+
+Server-side rendering generates HTML on the server for each incoming request. This mode is ideal for:
+
+- **Dynamic applications** with frequently changing data
+- **User-specific content** that varies per request
+- **SEO-critical pages** that need fresh content
+- **Applications with APIs** that need server-side logic
+
+<CodeGroup>
+```dart lib/main.server.dart
+import 'package:jaspr/server.dart';
+
+void main() {
+  Jaspr.initializeApp();
+  
+  runApp(App());
+}
+```
+
+```dart lib/app.dart
+import 'package:jaspr/jaspr.dart';
+
+class App extends StatelessComponent {
+  @override
+  Component build(BuildContext context) {
+    return Document(
+      title: 'My SSR App',
+      body: div([
+        h1([.text('Server-Side Rendered')]),
+        p([.text('This page was rendered on the server!')]),
+      ]),
+    );
+  }
+}
+```
+</CodeGroup>
+
+**Deployment:**
+```bash
+jaspr build
+# Outputs: build/jaspr/app (executable)
+#          build/jaspr/web/ (static assets)
+```
+
+## Static Site Generation (SSG)
+
+Static site generation pre-renders all pages at build time. This mode is perfect for:
+
+- **Content-heavy sites** like blogs and documentation
+- **Marketing pages** with infrequent updates
+- **High-traffic sites** that need maximum performance
+- **Sites deployed to CDNs** without server infrastructure
+
+<CodeGroup>
+```dart lib/main.server.dart
+import 'package:jaspr/server.dart';
+import 'package:jaspr_router/jaspr_router.dart';
+
+void main() {
+  Jaspr.initializeApp();
+  
+  runApp(Document(
+    body: Router(routes: [
+      Route(path: '/', builder: (_, __) => HomePage()),
+      Route(path: '/about', builder: (_, __) => AboutPage()),
+      Route(path: '/contact', builder: (_, __) => ContactPage()),
+    ]),
+  ));
+}
+```
+</CodeGroup>
+
+**Deployment:**
+```bash
+jaspr build
+# Outputs: build/jaspr/index.html
+#          build/jaspr/about/index.html
+#          build/jaspr/contact/index.html
+#          build/jaspr/main.dart.js (and other assets)
+```
+
+## Client-Side Rendering (CSR)
+
+Client-side rendering happens in the browser after initial page load. In Jaspr, you enable CSR for specific components using the `@client` annotation:
+
+```dart
+import 'package:jaspr/jaspr.dart';
+
+@client
+class InteractiveCounter extends StatefulComponent {
+  @override
+  State<InteractiveCounter> createState() => _InteractiveCounterState();
+}
+
+class _InteractiveCounterState extends State<InteractiveCounter> {
+  int count = 0;
+  
+  @override
+  Component build(BuildContext context) {
+    return div([
+      p([.text('Count: $count')]),
+      button(
+        onClick: () => setState(() => count++),
+        [.text('Increment')],
+      ),
+    ]);
+  }
+}
+```
+
+<Note>
+Client components are automatically hydrated when the page loads, preserving the server-rendered HTML and adding interactivity.
+</Note>
+
+## Hybrid Rendering
+
+Jaspr's unique strength is **hybrid rendering** - combining server and client rendering in the same application:
+
+```dart
+import 'package:jaspr/server.dart';
+
+class ProductPage extends StatelessComponent {
+  @override
+  Component build(BuildContext context) {
+    return div([
+      // Server-rendered content (SEO-friendly)
+      h1([.text('Product Details')]),
+      ProductInfo(),
+      
+      // Client-rendered interactive component
+      AddToCartButton(),
+      
+      // Client-rendered reviews with real-time updates
+      ProductReviews(),
+    ]);
+  }
+}
+
+@client
+class AddToCartButton extends StatelessComponent {
+  // Interactive button with client-side state
+}
+
+@client
+class ProductReviews extends StatelessComponent {
+  // Real-time reviews with WebSocket connection
+}
+```
+
+## Next Steps
+
+<Steps>
+  <Step title="Learn Server-Side Rendering">
+    Dive deep into SSR configuration and server-specific APIs
+    
+    [Server-Side Rendering →](/rendering/server-side)
+  </Step>
+  
+  <Step title="Understand Client-Side Hydration">
+    Learn how to create interactive client components
+    
+    [Client-Side Rendering →](/rendering/client-side)
+  </Step>
+  
+  <Step title="Build Static Sites">
+    Generate fast, static sites with SSG
+    
+    [Static Site Generation →](/rendering/static-sites)
+  </Step>
+</Steps>

@@ -1,0 +1,311 @@
+---
+title: PreloadStateMixin
+description: Preload asynchronous data on the server before rendering.
+---
+
+The `PreloadStateMixin` allows you to perform asynchronous work on the server before the initial render. This is useful for fetching data from databases, APIs, or performing other async operations during server-side rendering.
+
+## Overview
+
+`PreloadStateMixin` is a mixin on `State` that preloads state on the server before `initState()` is called.
+
+### Signature
+
+```dart
+mixin PreloadStateMixin<T extends StatefulComponent> on State<T>
+```
+
+<ParamField path="T" type="StatefulComponent">
+  The type of the component this state is associated with.
+</ParamField>
+
+## Method
+
+<Card title="preloadState()" icon="download">
+  Called on the server before `initState()` to preload asynchronous data.
+  
+  ```dart
+  @protected
+  Future<void> preloadState()
+  ```
+  
+  **Returns:** A `Future` that completes when the data has been loaded.
+</Card>
+
+<Note>
+  `preloadState()` is **only** called on the server during the first build. It is not called on the client or during subsequent rebuilds.
+</Note>
+
+## Usage
+
+### Basic Example
+
+```dart
+import 'package:jaspr/jaspr.dart';
+
+class UserProfile extends StatefulComponent {
+  const UserProfile({required this.userId});
+  
+  final String userId;
+  
+  @override
+  State createState() => UserProfileState();
+}
+
+class UserProfileState extends State<UserProfile> 
+    with PreloadStateMixin<UserProfile> {
+  Map<String, dynamic>? userData;
+  
+  @override
+  Future<void> preloadState() async {
+    // This runs on the server before rendering
+    userData = await fetchUserFromDatabase(component.userId);
+  }
+  
+  @override
+  Component build(BuildContext context) {
+    if (userData == null) {
+      return div([], [text('Loading...')]);
+    }
+    
+    return div([], [
+      h1([], [text(userData!['name'])]),
+      p([], [text(userData!['email'])]),
+    ]);
+  }
+  
+  Future<Map<String, dynamic>> fetchUserFromDatabase(String id) async {
+    // Database fetch logic
+    await Future.delayed(Duration(seconds: 1));
+    return {'name': 'John Doe', 'email': 'john@example.com'};
+  }
+}
+```
+
+### With API Calls
+
+```dart
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+import 'package:jaspr/jaspr.dart';
+
+class ArticleList extends StatefulComponent {
+  @override
+  State createState() => ArticleListState();
+}
+
+class ArticleListState extends State<ArticleList> 
+    with PreloadStateMixin<ArticleList> {
+  List<Map<String, dynamic>> articles = [];
+  
+  @override
+  Future<void> preloadState() async {
+    final response = await http.get(
+      Uri.parse('https://api.example.com/articles'),
+    );
+    
+    if (response.statusCode == 200) {
+      articles = (jsonDecode(response.body) as List)
+          .cast<Map<String, dynamic>>();
+    }
+  }
+  
+  @override
+  Component build(BuildContext context) {
+    return div([], [
+      h2([], [text('Articles')]),
+      ...articles.map((article) => 
+        article([], [
+          h3([], [text(article['title'])]),
+          p([], [text(article['summary'])]),
+        ])
+      ),
+    ]);
+  }
+}
+```
+
+## Lifecycle Order
+
+When using `PreloadStateMixin`, the lifecycle order on the server is:
+
+1. Component is mounted
+2. `preloadState()` is called and awaited
+3. `initState()` is called
+4. `build()` is called
+5. Component is rendered to HTML
+
+```dart
+class MyState extends State<MyComponent> 
+    with PreloadStateMixin<MyComponent> {
+  String data = '';
+  
+  @override
+  Future<void> preloadState() async {
+    print('1. preloadState called');
+    data = await fetchData();
+    print('2. preloadState completed');
+  }
+  
+  @override
+  void initState() {
+    super.initState();
+    print('3. initState called');
+    // data is already loaded here
+  }
+  
+  @override
+  Component build(BuildContext context) {
+    print('4. build called');
+    return div([], [text(data)]);
+  }
+}
+```
+
+## Combining with SyncStateMixin
+
+A common pattern is to preload data on the server and sync it to the client:
+
+```dart
+class DataComponent extends StatefulComponent {
+  @override
+  State createState() => DataComponentState();
+}
+
+class DataComponentState extends State<DataComponent> 
+    with PreloadStateMixin, SyncStateMixin<DataComponent, List<String>> {
+  List<String> items = [];
+  
+  @override
+  Future<void> preloadState() async {
+    // Fetch data on the server
+    items = await fetchItemsFromDatabase();
+  }
+  
+  @override
+  List<String> getState() {
+    // Send data to the client
+    return items;
+  }
+  
+  @override
+  void updateState(List<String> value) {
+    // Receive data on the client
+    items = value;
+  }
+  
+  @override
+  Component build(BuildContext context) {
+    return ul([], 
+      items.map((item) => li([], [text(item)])).toList(),
+    );
+  }
+  
+  Future<List<String>> fetchItemsFromDatabase() async {
+    await Future.delayed(Duration(milliseconds: 100));
+    return ['Item 1', 'Item 2', 'Item 3'];
+  }
+}
+```
+
+## Error Handling
+
+```dart
+class DataState extends State<DataComponent> 
+    with PreloadStateMixin<DataComponent> {
+  String? data;
+  String? error;
+  
+  @override
+  Future<void> preloadState() async {
+    try {
+      data = await fetchData();
+    } catch (e) {
+      error = e.toString();
+    }
+  }
+  
+  @override
+  Component build(BuildContext context) {
+    if (error != null) {
+      return div(classes: 'error', [
+        text('Error: $error'),
+      ]);
+    }
+    
+    if (data == null) {
+      return div([], [text('Loading...')]);
+    }
+    
+    return div([], [text(data!)]);
+  }
+}
+```
+
+## When to Use
+
+Use `PreloadStateMixin` when you need to:
+
+- Fetch data from a database before rendering
+- Make API calls during server-side rendering
+- Perform any async operation that must complete before the initial render
+- Pre-compute expensive operations on the server
+
+<Warning>
+  Do NOT use async/await directly in `initState()`. The framework will throw an error if `initState()` returns a `Future`. Use `PreloadStateMixin` instead.
+</Warning>
+
+### Don't Do This
+
+```dart
+class BadState extends State<BadComponent> {
+  String data = '';
+  
+  @override
+  void initState() async { // ❌ Wrong!
+    super.initState();
+    data = await fetchData(); // This will cause an error
+  }
+  
+  @override
+  Component build(BuildContext context) {
+    return div([], [text(data)]);
+  }
+}
+```
+
+### Do This Instead
+
+```dart
+class GoodState extends State<GoodComponent> 
+    with PreloadStateMixin<GoodComponent> {
+  String data = '';
+  
+  @override
+  Future<void> preloadState() async { // ✅ Correct!
+    data = await fetchData();
+  }
+  
+  @override
+  Component build(BuildContext context) {
+    return div([], [text(data)]);
+  }
+}
+```
+
+## Alternatives
+
+If you need to perform async work but don't need it to complete before the initial render, consider:
+
+- **AsyncStatelessComponent** - For stateless components with async build
+- **AsyncBuilder** - For async operations in the component tree
+- **FutureBuilder** - For future-based async operations
+- **StreamBuilder** - For stream-based async operations
+
+These alternatives allow async work to happen after the initial render, showing a loading state while waiting.
+
+## See Also
+
+- [SyncStateMixin](/api/server-client/sync-state) - Sync state from server to client
+- [AsyncStatelessComponent](/api/components/async#asyncstatelesscomponent) - Async stateless components
+- [Server Rendering](/dev/server) - Learn more about server-side rendering

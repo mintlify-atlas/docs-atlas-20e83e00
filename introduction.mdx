@@ -1,0 +1,145 @@
+---
+title: Introduction
+description: A modern web framework for building websites in Dart with support for both client-side and server-side rendering
+---
+
+# Welcome to Jaspr
+
+Jaspr is a modern web framework for building websites in Dart with support for both **client-side** and **server-side rendering**, as well as **static site generation**.
+
+## Why Jaspr?
+
+Jaspr was made with the premise to make a web framework that looks and feels just like Flutter, but renders normal HTML and CSS like React or Vue.
+
+<CardGroup cols={3}>
+  <Card title="For Flutter Developers" icon="flutter">
+    Familiar component model that works just like Flutter widgets, making it easy to transfer your Flutter knowledge to the web
+  </Card>
+  <Card title="For Web Developers" icon="globe">
+    Native web technologies - renders to HTML, CSS, and the DOM instead of canvas, ensuring better SEO and accessibility
+  </Card>
+  <Card title="For Fullstack Apps" icon="server">
+    Built-in server-side rendering with automatic state synchronization between server and client
+  </Card>
+</CardGroup>
+
+## Core Features
+
+<CardGroup cols={2}>
+  <Card title="Familiar" icon="heart">
+    Works with a similar component model to Flutter widgets. If you know Flutter, you already know Jaspr.
+  </Card>
+  <Card title="Powerful" icon="rocket">
+    Comes with server-side rendering out of the box for better performance and SEO.
+  </Card>
+  <Card title="Easy" icon="arrows-rotate">
+    Syncs component state between server and client automatically - no manual setup required.
+  </Card>
+  <Card title="Fast" icon="bolt">
+    Performs optimized DOM updates only where needed, ensuring blazing-fast performance.
+  </Card>
+  <Card title="Flexible" icon="sliders">
+    Runs on the server, client, or both with manual or automatic setup. You decide.
+  </Card>
+  <Card title="Type-Safe" icon="shield">
+    Written completely in Dart with full type safety across your entire stack.
+  </Card>
+</CardGroup>
+
+## Who is Jaspr for?
+
+Jaspr is targeted mainly at **Flutter developers** that want to build any type of website, especially ones that are not suitable for Flutter Web.
+
+The Flutter team has stated that:
+
+<Note>
+Flutter Web is for building **Web-Apps**, not **Web-Sites**.
+</Note>
+
+While Flutter Web is great for sharing apps across platforms, it may not be suited for all types of websites you want to build - particularly those requiring excellent SEO, fast initial load times, or accessibility.
+
+## What Makes Jaspr Different?
+
+Jaspr gives you the familiar look and feel of the Flutter framework while using native web technologies like HTML, the DOM, and CSS. This enables you to build **all** kinds of websites using **Dart**.
+
+```dart
+import 'package:jaspr/jaspr.dart';
+
+class App extends StatelessComponent {
+  @override
+  Component build(BuildContext context) {
+    return div([
+      h1([text('Welcome to Jaspr')]),
+      p([text('A modern web framework for Dart')]),
+    ]);
+  }
+}
+```
+
+## Quick Example
+
+Here's a simple interactive counter component:
+
+```dart
+import 'package:jaspr/jaspr.dart';
+
+@client
+class Counter extends StatefulComponent {
+  @override
+  State<Counter> createState() => _CounterState();
+}
+
+class _CounterState extends State<Counter> {
+  int count = 0;
+
+  @override
+  Component build(BuildContext context) {
+    return div([
+      p([text('Count: $count')]),
+      button(
+        onClick: () => setState(() => count++),
+        [text('Increment')],
+      ),
+    ]);
+  }
+}
+```
+
+The `@client` annotation makes this component interactive by rendering it on the client side after server-side rendering.
+
+## Try It Online
+
+Inspired by DartPad, Jaspr has its own online editor and playground called **JasprPad**.
+
+<Card title="JasprPad" icon="play" href="https://playground.jaspr.site">
+  Try Jaspr in your browser without any installation. Check out samples, take the tutorial, or experiment with your own code.
+</Card>
+
+<Tip>
+JasprPad is built with Jaspr itself! Check out the [source code](https://github.com/schultek/jaspr/tree/main/apps/jaspr_pad) to see how Jaspr is used in a larger application.
+</Tip>
+
+## Ready to Get Started?
+
+<CardGroup cols={2}>
+  <Card title="Quickstart" icon="rocket" href="/quickstart">
+    Install Jaspr and create your first app in under 5 minutes
+  </Card>
+  <Card title="Jaspr vs Flutter Web" icon="code-compare" href="/jaspr-vs-flutter-web">
+    Understand the key differences and when to use each framework
+  </Card>
+</CardGroup>
+
+## Community & Support
+
+<CardGroup cols={3}>
+  <Card title="Discord" icon="discord" href="https://discord.gg/XGXrGEk4c6">
+    Join our community of developers
+  </Card>
+  <Card title="GitHub" icon="github" href="https://github.com/schultek/jaspr">
+    Star the project and contribute
+  </Card>
+  <Card title="Benchmarks" icon="chart-line" href="https://jaspr-benchmarks.web.app">
+    See how Jaspr performs
+  </Card>
+</CardGroup>

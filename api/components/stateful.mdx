@@ -1,0 +1,483 @@
+---
+title: StatefulComponent & State
+description: API reference for StatefulComponent and State classes
+---
+
+## StatefulComponent
+
+`StatefulComponent` is a component that has mutable state. State is information that can be read synchronously when the component is built and might change during the lifetime of the component.
+
+### Constructor
+
+```dart
+const StatefulComponent({Key? key})
+```
+
+<ParamField path="key" type="Key?">
+  An optional key to use for controlling how components are replaced in the tree.
+</ParamField>
+
+### Methods
+
+#### createState
+
+```dart
+State createState()
+```
+
+Creates the mutable state for this component at a given location in the tree.
+
+<ResponseField name="return" type="State">
+  A newly created instance of the associated `State` subclass.
+</ResponseField>
+
+<Warning>
+  The framework can call this method multiple times over the lifetime of a `StatefulComponent`. For example, if the component is inserted into the tree in multiple locations, the framework will create a separate `State` object for each location.
+</Warning>
+
+**Example:**
+
+```dart
+@override
+State<MyComponent> createState() => _MyComponentState();
+```
+
+#### createElement
+
+```dart
+Element createElement()
+```
+
+Creates a `StatefulElement` to manage this component's location in the tree.
+
+<ResponseField name="return" type="StatefulElement">
+  The element that will manage this component's state.
+</ResponseField>
+
+## State
+
+The logic and internal state for a `StatefulComponent`.
+
+Generic class `State<T extends StatefulComponent>` where `T` is the component type.
+
+### Properties
+
+#### component
+
+```dart
+T get component
+```
+
+The current configuration. A `State` object's configuration is the corresponding `StatefulComponent` instance.
+
+<ResponseField name="component" type="T">
+  The current component configuration.
+</ResponseField>
+
+#### context
+
+```dart
+BuildContext get context
+```
+
+The location in the tree where this component builds.
+
+<ResponseField name="context" type="BuildContext">
+  The build context for this state object.
+</ResponseField>
+
+#### mounted
+
+```dart
+bool get mounted
+```
+
+Whether this `State` object is currently in a tree.
+
+<ResponseField name="mounted" type="bool">
+  `true` if the state is mounted, `false` otherwise.
+</ResponseField>
+
+<Warning>
+  It is an error to call `setState` unless `mounted` is true.
+</Warning>
+
+### Lifecycle Methods
+
+#### initState
+
+```dart
+void initState()
+```
+
+Called when this object is inserted into the tree. The framework will call this method exactly once for each `State` object it creates.
+
+**Use cases:**
+- Initialize state that depends on `BuildContext` or the component
+- Subscribe to `Stream`s or `ChangeNotifier`s
+- Set up controllers or other resources
+
+<Warning>
+  You cannot use `BuildContext.dependOnInheritedComponentOfExactType` from this method. Use `didChangeDependencies` instead, which will be called immediately after `initState`.
+</Warning>
+
+**Example:**
+
+```dart
+@override
+void initState() {
+  super.initState();
+  _controller = TextEditingController();
+  _subscription = myStream.listen((data) {
+    // Handle stream data
+  });
+}
+```
+
+#### didChangeDependencies
+
+```dart
+void didChangeDependencies()
+```
+
+Called when a dependency of this `State` object changes. This method is also called immediately after `initState`.
+
+**Use cases:**
+- Initialize state that depends on `InheritedComponent`s
+- Perform expensive work when dependencies change
+
+**Example:**
+
+```dart
+@override
+void didChangeDependencies() {
+  super.didChangeDependencies();
+  final theme = context.dependOnInheritedComponentOfExactType<Theme>();
+  // Use theme data
+}
+```
+
+#### build
+
+```dart
+Component build(BuildContext context)
+```
+
+Describes the part of the user interface represented by this component.
+
+<ParamField path="context" type="BuildContext">
+  The build context (same as the `context` property).
+</ParamField>
+
+<ResponseField name="return" type="Component">
+  The component that describes this part of the user interface.
+</ResponseField>
+
+**Called:**
+- After `initState`
+- After `didUpdateComponent`
+- After receiving a call to `setState`
+- After a dependency changes
+- After `deactivate` and reinsertion into the tree
+
+#### didUpdateComponent
+
+```dart
+void didUpdateComponent(covariant T oldComponent)
+```
+
+Called whenever the component configuration changes.
+
+<ParamField path="oldComponent" type="T">
+  The previous component configuration.
+</ParamField>
+
+**Use case:** Respond to component property changes (e.g., restart animations, update subscriptions).
+
+<Note>
+  The framework always calls `build` after calling `didUpdateComponent`, so any calls to `setState` in `didUpdateComponent` are redundant.
+</Note>
+
+**Example:**
+
+```dart
+@override
+void didUpdateComponent(MyComponent oldComponent) {
+  super.didUpdateComponent(oldComponent);
+  if (component.stream != oldComponent.stream) {
+    _subscription?.cancel();
+    _subscription = component.stream.listen(handleData);
+  }
+}
+```
+
+#### setState
+
+```dart
+void setState(VoidCallback fn)
+```
+
+Notifies the framework that the internal state of this object has changed.
+
+<ParamField path="fn" type="VoidCallback">
+  A callback that updates the state. Called immediately and synchronously. Must not return a `Future`.
+</ParamField>
+
+**Example:**
+
+```dart
+void _incrementCounter() {
+  setState(() {
+    _counter++;
+  });
+}
+```
+
+<Warning>
+  - It is an error to call this method after the framework calls `dispose`
+  - The callback cannot be `async` and must not return a `Future`
+  - Only wrap the actual state changes in `setState`, not expensive computations
+</Warning>
+
+#### shouldRebuild
+
+```dart
+bool shouldRebuild(covariant T newComponent)
+```
+
+Determines whether a rebuild can be skipped when the component is about to update.
+
+<ParamField path="newComponent" type="T">
+  The new component configuration.
+</ParamField>
+
+<ResponseField name="return" type="bool">
+  `true` to rebuild (default), `false` to skip.
+</ResponseField>
+
+#### deactivate
+
+```dart
+void deactivate()
+```
+
+Called when this object is removed from the tree.
+
+**Use case:** Clean up any links between this object and other elements in the tree.
+
+#### activate
+
+```dart
+void activate()
+```
+
+Called when this object is reinserted into the tree after having been removed via `deactivate`.
+
+#### dispose
+
+```dart
+void dispose()
+```
+
+Called when this object is removed from the tree permanently.
+
+**Use cases:**
+- Cancel subscriptions
+- Dispose controllers
+- Release other resources
+
+**Example:**
+
+```dart
+@override
+void dispose() {
+  _controller.dispose();
+  _subscription?.cancel();
+  super.dispose();
+}
+```
+
+<Warning>
+  After the framework calls `dispose`, the `State` object is considered unmounted and the `mounted` property is false. It is an error to call `setState` at this point.
+</Warning>
+
+## State Lifecycle
+
+<Steps>
+  <Step title="Creation">
+    The framework creates a `State` object by calling `StatefulComponent.createState`.
+  </Step>
+  
+  <Step title="Mounting">
+    The `State` object is associated with a `BuildContext`. The `initState` method is called.
+  </Step>
+  
+  <Step title="Dependencies">
+    The `didChangeDependencies` method is called.
+  </Step>
+  
+  <Step title="Ready">
+    The `State` object is fully initialized. The `build` method can be called any number of times.
+  </Step>
+  
+  <Step title="Updates">
+    When the parent rebuilds with a new component, `didUpdateComponent` is called, followed by `build`.
+  </Step>
+  
+  <Step title="Deactivation">
+    If removed from the tree, `deactivate` is called. The state might be reinserted elsewhere.
+  </Step>
+  
+  <Step title="Disposal">
+    If not reinserted, `dispose` is called. The state is now defunct and cannot be remounted.
+  </Step>
+</Steps>
+
+## Example Usage
+
+### Basic Counter
+
+```dart
+class Counter extends StatefulComponent {
+  @override
+  State<StatefulComponent> createState() => CounterState();
+}
+
+class CounterState extends State<Counter> {
+  int counter = 0;
+
+  @override
+  Component build(BuildContext context) {
+    return div([
+      button(
+        events: {'click': (e) => setState(() => counter++)},
+        [text('Click Me')],
+      ),
+      p([text('Count: $counter')]),
+    ]);
+  }
+}
+```
+
+### With Lifecycle Management
+
+```dart
+class TimerComponent extends StatefulComponent {
+  @override
+  State createState() => _TimerState();
+}
+
+class _TimerState extends State<TimerComponent> {
+  late Timer _timer;
+  int _elapsed = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _timer = Timer.periodic(Duration(seconds: 1), (timer) {
+      setState(() => _elapsed++);
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer.cancel();
+    super.dispose();
+  }
+
+  @override
+  Component build(BuildContext context) {
+    return text('Elapsed: $_elapsed seconds');
+  }
+}
+```
+
+### With Stream Subscription
+
+```dart
+class StreamListener extends StatefulComponent {
+  const StreamListener({required this.stream, super.key});
+
+  final Stream<String> stream;
+
+  @override
+  State createState() => _StreamListenerState();
+}
+
+class _StreamListenerState extends State<StreamListener> {
+  StreamSubscription? _subscription;
+  String? _data;
+
+  @override
+  void initState() {
+    super.initState();
+    _subscribe();
+  }
+
+  @override
+  void didUpdateComponent(StreamListener oldComponent) {
+    super.didUpdateComponent(oldComponent);
+    if (component.stream != oldComponent.stream) {
+      _subscription?.cancel();
+      _subscribe();
+    }
+  }
+
+  void _subscribe() {
+    _subscription = component.stream.listen((data) {
+      setState(() => _data = data);
+    });
+  }
+
+  @override
+  void dispose() {
+    _subscription?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Component build(BuildContext context) {
+    return text(_data ?? 'No data yet');
+  }
+}
+```
+
+## PreloadStateMixin
+
+A mixin on `State` that preloads state on the server before rendering.
+
+### preloadState
+
+```dart
+Future<void> preloadState()
+```
+
+Called on the server before `initState()` to preload asynchronous data.
+
+**Example:**
+
+```dart
+class DataComponent extends StatefulComponent {
+  @override
+  State createState() => _DataState();
+}
+
+class _DataState extends State<DataComponent> with PreloadStateMixin {
+  late String data;
+
+  @override
+  Future<void> preloadState() async {
+    data = await fetchDataFromAPI();
+  }
+
+  @override
+  Component build(BuildContext context) {
+    return text('Data: $data');
+  }
+}
+```
+
+## Related Components
+
+- [StatelessComponent](/api/components/stateless) - For components without mutable state
+- [InheritedComponent](/api/components/inherited) - For providing state to descendants

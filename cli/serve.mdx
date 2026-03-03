@@ -1,0 +1,522 @@
+---
+title: jaspr serve
+description: Run a development server with hot reload, debugging support, and live reloading for rapid development
+---
+
+The `jaspr serve` command starts a development server with hot reload capabilities, allowing you to see changes instantly as you code.
+
+## Basic Usage
+
+```bash
+jaspr serve
+```
+
+This starts the development server with default settings:
+- Server runs on `http://localhost:8080`
+- Hot reload enabled for both client and server code
+- Automatic browser refresh on changes
+
+<CodeGroup>
+```bash Default Server
+$ jaspr serve
+
+[CLI] Running jaspr in server rendering mode.
+[CLI] Starting web compiler...
+[CLI] Building web assets...
+[CLIENT] Compiled main.dart
+[CLI] Done building web assets.
+[CLI] Starting server...
+[SERVER] Server started on port 8080
+[CLI] Server started.
+[CLI] Serving at http://localhost:8080
+```
+
+```bash Client Mode
+$ jaspr serve
+
+[CLI] Running jaspr in client rendering mode.
+[CLI] Starting web compiler...
+[CLIENT] Compiling with dartdevc...
+[CLIENT] Compiled main.dart
+[CLI] Serving at http://localhost:8080
+```
+</CodeGroup>
+
+## Hot Reload
+
+Jaspr provides intelligent hot reload for both client and server code:
+
+<Tabs>
+  <Tab title="Client Hot Reload">
+    Changes to client-side code trigger automatic browser updates:
+    
+    - **Module reload** (default) - Reloads JavaScript modules without full page refresh
+    - **Full refresh** - Performs complete page reload including server restart
+    
+    ```bash
+    # After saving a file:
+    [CLIENT] Change detected: lib/app.dart
+    [CLIENT] Rebuilding...
+    [CLIENT] Compiled main.dart (234ms)
+    [CLI] Rebuilt web assets.
+    ```
+  </Tab>
+  
+  <Tab title="Server Hot Reload">
+    Server-side code changes are hot-reloaded when using `lib/*.server.dart` files:
+    
+    ```bash
+    # After saving a server file:
+    [SERVER] Change detected: lib/main.server.dart
+    [SERVER] Hot reloading...
+    [SERVER] Reloaded in 145ms
+    ```
+    
+    <Note>
+    Server hot reload is only available for entry points in the `lib/` directory. Files in `bin/` will require a manual restart.
+    </Note>
+  </Tab>
+</Tabs>
+
+## Server Options
+
+<ParamField path="--port" type="number" default="8080">
+  Specify the port for the development server.
+  
+  ```bash
+  jaspr serve --port 3000
+  ```
+  
+  You can also set the default port in `pubspec.yaml`:
+  
+  ```yaml
+  jaspr:
+    port: 3000
+  ```
+</ParamField>
+
+<ParamField path="--input" type="string">
+  Specify the server entry point file. Must end in `.server.dart`.
+  
+  ```bash
+  jaspr serve --input lib/custom.server.dart
+  ```
+  
+  By default, the CLI searches for:
+  1. `lib/main.server.dart`
+  2. First `*.server.dart` file in `bin/`
+  3. First `*.server.dart` file in `lib/`
+</ParamField>
+
+<ParamField path="--web-port" type="number" default="5467">
+  Specify the port for the internal webdev server.
+  
+  ```bash
+  jaspr serve --web-port 5500
+  ```
+  
+  <Info>
+  Change this if running multiple Jaspr projects simultaneously.
+  </Info>
+</ParamField>
+
+<ParamField path="--proxy-port" type="number" default="5567">
+  Specify the port for the internal proxy server.
+  
+  ```bash
+  jaspr serve --proxy-port 5600
+  ```
+  
+  <Info>
+  Change this if running multiple Jaspr projects simultaneously.
+  </Info>
+</ParamField>
+
+## Reload Modes
+
+<ParamField path="--mode" type="option" default="refresh">
+  Sets the reload/refresh behavior when files change.
+  
+  **Options:**
+  - `reload` - Reloads JavaScript modules without server reload (loses current state)
+  - `refresh` - Performs full page refresh and server reload
+  
+  ```bash
+  jaspr serve --mode reload
+  ```
+</ParamField>
+
+<Tabs>
+  <Tab title="Refresh Mode (Default)">
+    Full page refresh including server restart on file changes.
+    
+    ```bash
+    jaspr serve --mode refresh
+    ```
+    
+    **Pros:**
+    - Ensures complete state refresh
+    - More reliable for complex changes
+    - Restarts server with new code
+    
+    **Cons:**
+    - Loses current application state
+    - Slightly slower than reload
+  </Tab>
+  
+  <Tab title="Reload Mode">
+    Hot module replacement without full page refresh.
+    
+    ```bash
+    jaspr serve --mode reload
+    ```
+    
+    **Pros:**
+    - Faster updates
+    - Preserves some application state
+    
+    **Cons:**
+    - Server is not restarted
+    - May require manual refresh for some changes
+  </Tab>
+</Tabs>
+
+## Build Configuration
+
+<ParamField path="--debug" type="flag" default="false">
+  Serve the app in debug mode with pause on start.
+  
+  ```bash
+  jaspr serve --debug
+  ```
+  
+  The server will pause on startup, waiting for a debugger to attach.
+</ParamField>
+
+<ParamField path="--release" type="flag" default="false">
+  Serve the app in release mode with optimizations.
+  
+  ```bash
+  jaspr serve --release
+  ```
+  
+  **Changes:**
+  - Compiles with `dart2js` instead of `dartdevc`
+  - Disables server hot reload
+  - Enables all optimizations
+  - Removes assert statements
+</ParamField>
+
+<ParamField path="--experimental-wasm" type="flag" default="false">
+  Compile to WebAssembly instead of JavaScript.
+  
+  ```bash
+  jaspr serve --experimental-wasm
+  ```
+  
+  <Warning>
+  WebAssembly support is experimental and requires a compatible browser.
+  </Warning>
+</ParamField>
+
+## Browser Integration
+
+<ParamField path="--launch-in-chrome" type="flag" default="false">
+  Automatically launch the app in Chrome with debugging enabled.
+  
+  ```bash
+  jaspr serve --launch-in-chrome
+  ```
+  
+  This enables:
+  - Automatic Chrome launch
+  - Dart DevTools integration
+  - VM service for debugging
+</ParamField>
+
+<CodeGroup>
+```bash Auto-Launch Chrome
+$ jaspr serve --launch-in-chrome
+
+[CLI] Running jaspr in server rendering mode.
+[CLI] Starting web compiler...
+[CLI] Done building web assets.
+[CLI] Starting server...
+[SERVER] Server started on port 8080
+[CLIENT] The Dart VM service is listening on http://127.0.0.1:56789/...
+[CLI] Chrome started.
+```
+</CodeGroup>
+
+## Advanced Options
+
+<ParamField path="--skip-server" type="flag" default="false">
+  Skip running the server, only run the client workflow.
+  
+  ```bash
+  jaspr serve --skip-server
+  ```
+  
+  <Warning>
+  When using this flag, you must manually start the server and set the `JASPR_PROXY_PORT` environment variable.
+  </Warning>
+</ParamField>
+
+<ParamField path="--managed-build-options" type="flag" default="true">
+  Let Jaspr manage build_runner options automatically.
+  
+  ```bash
+  # Manually configure build options
+  jaspr serve --no-managed-build-options
+  ```
+  
+  Disable this to manually configure builders in `build.yaml`.
+</ParamField>
+
+<ParamField path="--verbose" type="flag" default="false">
+  Enable verbose logging for detailed output.
+  
+  ```bash
+  jaspr serve --verbose
+  ```
+</ParamField>
+
+## Dart Defines
+
+Pass custom compile-time constants to your application:
+
+<ParamField path="--dart-define" type="string">
+  Define environment variables available at compile time.
+  
+  ```bash
+  jaspr serve --dart-define=API_URL=https://api.example.com
+  ```
+</ParamField>
+
+<ParamField path="--dart-define-from-file" type="string">
+  Load dart-define variables from a JSON file.
+  
+  ```bash
+  jaspr serve --dart-define-from-file=config.json
+  ```
+  
+  ```json config.json
+  {
+    "API_URL": "https://api.example.com",
+    "FEATURE_FLAG": "true"
+  }
+  ```
+</ParamField>
+
+Access these values in your code:
+
+```dart
+const apiUrl = String.fromEnvironment('API_URL');
+const featureEnabled = bool.fromEnvironment('FEATURE_FLAG');
+```
+
+## Complete Examples
+
+<CodeGroup>
+```bash Basic Development
+# Start with defaults
+jaspr serve
+```
+
+```bash Custom Port
+# Run on port 3000
+jaspr serve --port 3000
+```
+
+```bash Debug Mode
+# Start with Chrome and debugging
+jaspr serve --debug --launch-in-chrome
+```
+
+```bash Release Preview
+# Test production build locally
+jaspr serve --release
+```
+
+```bash WebAssembly
+# Serve with WASM compilation
+jaspr serve --experimental-wasm
+```
+
+```bash Multiple Projects
+# Run multiple projects simultaneously
+jaspr serve --port 3000 --web-port 5470 --proxy-port 5570
+```
+
+```bash With Environment Variables
+# Pass API configuration
+jaspr serve \
+  --dart-define=API_URL=https://api.example.com \
+  --dart-define=DEBUG=true
+```
+</CodeGroup>
+
+## Development Workflow
+
+<Steps>
+  <Step title="Start the server">
+    ```bash
+    jaspr serve
+    ```
+    
+    Wait for the build to complete. The first build takes longer.
+  </Step>
+
+  <Step title="Open in browser">
+    Navigate to `http://localhost:8080` (or your custom port).
+  </Step>
+
+  <Step title="Make changes">
+    Edit your code in `lib/` or `web/`. Changes are detected automatically.
+  </Step>
+
+  <Step title="See updates">
+    The browser refreshes automatically with your changes.
+    
+    ```bash
+    [CLIENT] Change detected: lib/app.dart
+    [CLIENT] Rebuilding...
+    [CLI] Rebuilt web assets.
+    ```
+  </Step>
+</Steps>
+
+## Hot Reload Behavior
+
+Understand what triggers rebuilds and reloads:
+
+<AccordionGroup>
+  <Accordion title="Client Code Changes">
+    Files in `lib/` (imported by `web/main.dart`) or `web/`:
+    
+    ```bash
+    [CLIENT] Change detected: lib/components/button.dart
+    [CLIENT] Rebuilding...
+    [CLIENT] Compiled main.dart (156ms)
+    [CLI] Rebuilt web assets.
+    ```
+    
+    **Result:** Browser reloads (refresh mode) or hot-reloads (reload mode)
+  </Accordion>
+
+  <Accordion title="Server Code Changes">
+    Files ending in `.server.dart` in `lib/`:
+    
+    ```bash
+    [SERVER] Change detected: lib/main.server.dart
+    [SERVER] Hot reloading...
+    [SERVER] Reloaded in 145ms
+    ```
+    
+    **Result:** Server hot-reloads, browser refreshes
+  </Accordion>
+
+  <Accordion title="Asset Changes">
+    Changes to files in `web/` (HTML, CSS, images):
+    
+    ```bash
+    [CLIENT] Change detected: web/styles.css
+    [CLIENT] Rebuilding...
+    ```
+    
+    **Result:** Assets are rebuilt and browser refreshes
+  </Accordion>
+
+  <Accordion title="Build Configuration">
+    Changes to `build.yaml` or `pubspec.yaml`:
+    
+    **Action required:** Stop and restart `jaspr serve`
+  </Accordion>
+</AccordionGroup>
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Port already in use">
+    Change the port if 8080 is occupied:
+    
+    ```bash
+    jaspr serve --port 3000
+    ```
+  </Accordion>
+
+  <Accordion title="Server hot reload not working">
+    Ensure your server entry point is in `lib/`:
+    
+    ```bash
+    # Move from bin/ to lib/
+    mv bin/server.dart lib/main.server.dart
+    jaspr serve --input lib/main.server.dart
+    ```
+    
+    Entry points in `bin/` cannot use hot reload.
+  </Accordion>
+
+  <Accordion title="Build errors persist">
+    Stop the server and clean build artifacts:
+    
+    ```bash
+    # Stop jaspr serve (Ctrl+C)
+    dart run build_runner clean
+    jaspr serve
+    ```
+  </Accordion>
+
+  <Accordion title="Changes not detected">
+    Enable verbose mode to see file watching logs:
+    
+    ```bash
+    jaspr serve --verbose
+    ```
+  </Accordion>
+
+  <Accordion title="Multiple projects conflict">
+    Use different ports for each project:
+    
+    ```bash
+    # Project 1
+    jaspr serve --port 3000 --web-port 5470 --proxy-port 5570
+    
+    # Project 2  
+    jaspr serve --port 3001 --web-port 5471 --proxy-port 5571
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Performance Tips
+
+<Tip>
+**Speed up rebuilds:**
+
+- Use `--mode reload` for faster updates (when server restart isn't needed)
+- Keep server entry points in `lib/` for hot reload support
+- Use conditional imports to minimize build dependencies
+</Tip>
+
+<Warning>
+**Memory usage:**
+
+Long-running development servers may consume increasing memory. Restart periodically if you notice slowdowns.
+</Warning>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Build Command" icon="hammer" href="/cli/build">
+    Build your app for production deployment
+  </Card>
+  <Card title="Project Structure" icon="folder" href="/core/project-structure">
+    Learn about the Jaspr project structure
+  </Card>
+  <Card title="Components" icon="cube" href="/core/components">
+    Build reusable components
+  </Card>
+  <Card title="Debugging" icon="bug" href="/going-further/debugging">
+    Debug your Jaspr application
+  </Card>
+</CardGroup>

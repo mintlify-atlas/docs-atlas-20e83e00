@@ -1,0 +1,397 @@
+---
+title: Deploying
+description: Deploy your Jaspr application to production
+---
+
+Jaspr applications can be deployed in multiple ways depending on your architecture and hosting requirements.
+
+## Build Your Application
+
+First, build your application for production:
+
+```bash
+jaspr build
+```
+
+This creates the compiled application in the `build/jaspr` directory, containing:
+- Compiled JavaScript files
+- Static HTML pages (for static or SSR modes)
+- CSS and other assets
+- Server executable (for SSR mode)
+
+## Deployment Modes
+
+Jaspr supports three deployment modes:
+
+### Static Site Generation (SSG)
+
+Generate static HTML files that can be deployed to any static hosting provider.
+
+**Best for:**
+- Marketing websites
+- Blogs and documentation
+- Landing pages
+- Content that doesn't require server-side rendering
+
+**Hosting options:**
+- GitHub Pages
+- Netlify
+- Vercel
+- Firebase Hosting
+- AWS S3 + CloudFront
+- Any static file server
+
+```bash
+jaspr build
+# Deploy contents of build/jaspr to your static host
+```
+
+### Client-Side Rendering (CSR)
+
+Render components entirely in the browser.
+
+**Best for:**
+- Single-page applications (SPAs)
+- Admin dashboards
+- Interactive web apps
+- Apps that don't need SEO
+
+**Hosting options:**
+Same as static sites - any static hosting provider.
+
+### Server-Side Rendering (SSR)
+
+Render components on the server for each request.
+
+**Best for:**
+- SEO-critical applications
+- Dynamic content
+- Personalized experiences
+- E-commerce sites
+
+**Hosting options:**
+- Cloud Run (Google Cloud)
+- Cloud Functions
+- Docker containers
+- VPS (DigitalOcean, Linode, etc.)
+- Heroku
+- Fly.io
+- Railway
+
+## Docker Deployment
+
+Create a `Dockerfile` for containerized deployment:
+
+```dockerfile
+FROM dart:stable AS build
+
+WORKDIR /app
+COPY pubspec.* ./
+RUN dart pub get
+
+COPY . .
+RUN dart pub global activate jaspr_cli
+RUN jaspr build
+
+# Runtime stage
+FROM debian:stable-slim
+
+RUN apt-get update && apt-get install -y \
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY --from=build /app/build/jaspr /app
+
+WORKDIR /app
+EXPOSE 8080
+
+CMD ["./app"]
+```
+
+Build and run:
+
+```bash
+docker build -t my-jaspr-app .
+docker run -p 8080:8080 my-jaspr-app
+```
+
+<Tip>
+Set the `PORT` environment variable to configure which port your app listens on.
+</Tip>
+
+## Cloud Run (Google Cloud)
+
+<Steps>
+  <Step title="Build your Docker image">
+    ```bash
+    gcloud builds submit --tag gcr.io/PROJECT-ID/jaspr-app
+    ```
+  </Step>
+  
+  <Step title="Deploy to Cloud Run">
+    ```bash
+    gcloud run deploy jaspr-app \
+      --image gcr.io/PROJECT-ID/jaspr-app \
+      --platform managed \
+      --region us-central1 \
+      --allow-unauthenticated
+    ```
+  </Step>
+</Steps>
+
+## Fly.io Deployment
+
+Create a `fly.toml` configuration:
+
+```toml
+app = "my-jaspr-app"
+primary_region = "iad"
+
+[build]
+  dockerfile = "Dockerfile"
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = true
+  auto_start_machines = true
+  min_machines_running = 0
+
+[[vm]]
+  cpu_kind = "shared"
+  cpus = 1
+  memory_mb = 256
+```
+
+Deploy:
+
+```bash
+fly launch
+fly deploy
+```
+
+## Static Hosting (Netlify)
+
+Create a `netlify.toml` file:
+
+```toml
+[build]
+  command = "dart pub global activate jaspr_cli && jaspr build"
+  publish = "build/jaspr"
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+```
+
+Connect your repository to Netlify and it will automatically deploy on push.
+
+## Environment Variables
+
+Manage environment-specific configuration:
+
+```dart
+// lib/config.dart
+class Config {
+  static String get apiUrl => 
+    String.fromEnvironment('API_URL', defaultValue: 'http://localhost:8080');
+  
+  static bool get isProduction => 
+    bool.fromEnvironment('PRODUCTION', defaultValue: false);
+}
+```
+
+Pass variables during build:
+
+```bash
+jaspr build --dart-define=API_URL=https://api.example.com --dart-define=PRODUCTION=true
+```
+
+<Warning>
+Never commit secrets or API keys to your repository. Use environment variables or secret management services.
+</Warning>
+
+## Performance Optimization
+
+### Compression
+
+Enable gzip compression for your assets. Most hosting providers do this automatically, but for custom servers:
+
+```dart
+import 'package:shelf/shelf.dart' as shelf;
+
+final handler = const shelf.Pipeline()
+  .addMiddleware(shelf.logRequests())
+  .addHandler(router.call);
+
+final server = await shelf_io.serve(handler, host, port);
+server.autoCompress = true;
+```
+
+### Caching
+
+Set appropriate cache headers for static assets:
+
+```dart
+Response handleStaticFile(Request request) {
+  return Response.ok(
+    fileContents,
+    headers: {
+      'Cache-Control': 'public, max-age=31536000, immutable',
+    },
+  );
+}
+```
+
+### CDN Integration
+
+Serve static assets from a CDN:
+
+1. Upload built assets to your CDN
+2. Configure base URL in your app:
+
+```dart
+Document(
+  head: [
+    base(href: 'https://cdn.example.com/'),
+  ],
+  body: App(),
+)
+```
+
+## Health Checks
+
+Implement health check endpoints for container orchestration:
+
+```dart
+router.get('/health', (Request request) {
+  return Response.ok(
+    json.encode({'status': 'healthy'}),
+    headers: {'Content-Type': 'application/json'},
+  );
+});
+```
+
+## Monitoring and Logging
+
+### Structured Logging
+
+```dart
+import 'package:logging/logging.dart';
+
+final logger = Logger('MyApp');
+
+void main() {
+  Logger.root.level = Level.INFO;
+  Logger.root.onRecord.listen((record) {
+    print('${record.level.name}: ${record.time}: ${record.message}');
+  });
+  
+  // Your app code
+}
+```
+
+### Error Tracking
+
+Integrate error tracking services like Sentry:
+
+```dart
+import 'package:sentry/sentry.dart';
+
+void main() async {
+  await SentryFlutter.init(
+    (options) {
+      options.dsn = 'your-sentry-dsn';
+    },
+  );
+  
+  runApp();
+}
+```
+
+## Deployment Checklist
+
+<Steps>
+  <Step title="Test in production mode">
+    Build and test your app locally before deploying:
+    ```bash
+    jaspr build
+    cd build/jaspr
+    ./app  # Run the built server
+    ```
+  </Step>
+  
+  <Step title="Configure environment variables">
+    Set all required environment variables for your production environment.
+  </Step>
+  
+  <Step title="Enable HTTPS">
+    Ensure your hosting provider or load balancer terminates SSL/TLS.
+  </Step>
+  
+  <Step title="Set up monitoring">
+    Configure logging, error tracking, and uptime monitoring.
+  </Step>
+  
+  <Step title="Implement health checks">
+    Add endpoints for health and readiness checks.
+  </Step>
+  
+  <Step title="Configure caching">
+    Set appropriate cache headers and enable compression.
+  </Step>
+  
+  <Step title="Test performance">
+    Run performance tests and optimize as needed.
+  </Step>
+</Steps>
+
+## Scaling Considerations
+
+### Horizontal Scaling
+
+For high-traffic applications:
+- Use a load balancer to distribute traffic
+- Run multiple instances of your server
+- Use managed container orchestration (Kubernetes, Cloud Run, etc.)
+
+### Database Connections
+
+Manage connection pools efficiently:
+
+```dart
+final pool = PostgreSQLPool(
+  maxConnectionCount: 10,
+  connectionFactory: () => PostgreSQLConnection(
+    'localhost', 5432, 'database',
+    username: 'user',
+    password: 'password',
+  ),
+);
+```
+
+### Session Management
+
+For multi-instance deployments, use external session storage:
+- Redis
+- Memcached
+- Database-backed sessions
+
+## Troubleshooting
+
+**Build fails:**
+- Check Dart SDK version compatibility
+- Run `dart pub get` to ensure dependencies are up to date
+- Check for compilation errors in your code
+
+**Server crashes on startup:**
+- Verify environment variables are set correctly
+- Check port availability
+- Review server logs for error messages
+
+**Performance issues:**
+- Enable compression
+- Implement caching strategies
+- Use a CDN for static assets
+- Profile your application to identify bottlenecks

@@ -1,0 +1,546 @@
+---
+title: Routing and navigation
+description: Learn how to implement multi-page navigation in Jaspr with jaspr_router
+---
+
+Add client-side routing to your Jaspr application using the `jaspr_router` package for seamless navigation without full page reloads.
+
+## Installation
+
+Add `jaspr_router` to your project:
+
+```yaml pubspec.yaml
+dependencies:
+  jaspr: ^0.22.0
+  jaspr_router: ^0.8.0
+```
+
+Then run:
+
+```bash
+dart pub get
+```
+
+## Basic setup
+
+Wrap your application with a `Router` component and define routes:
+
+```dart
+import 'package:jaspr/jaspr.dart';
+import 'package:jaspr_router/jaspr_router.dart';
+
+class App extends StatelessComponent {
+  @override
+  Component build(BuildContext context) {
+    return Router(
+      routes: [
+        Route(
+          path: '/',
+          builder: (context, state) => HomePage(),
+        ),
+        Route(
+          path: '/about',
+          builder: (context, state) => AboutPage(),
+        ),
+        Route(
+          path: '/contact',
+          builder: (context, state) => ContactPage(),
+        ),
+      ],
+    );
+  }
+}
+```
+
+## Route parameters
+
+Capture dynamic segments in your routes:
+
+```dart
+Route(
+  path: '/users/:id',
+  builder: (context, state) {
+    final userId = state.pathParameters['id']!;
+    return UserProfile(userId: userId);
+  },
+),
+```
+
+Access parameters in your component:
+
+```dart
+class UserProfile extends StatelessComponent {
+  final String userId;
+  
+  const UserProfile({required this.userId});
+  
+  @override
+  Component build(BuildContext context) {
+    return div([
+      h1([text('User Profile: $userId')]),
+      // Fetch and display user data
+    ]);
+  }
+}
+```
+
+## Query parameters
+
+Access URL query parameters from the route state:
+
+```dart
+Route(
+  path: '/search',
+  builder: (context, state) {
+    final query = state.uri.queryParameters['q'] ?? '';
+    final page = int.tryParse(state.uri.queryParameters['page'] ?? '1') ?? 1;
+    
+    return SearchResults(query: query, page: page);
+  },
+),
+```
+
+## Link component
+
+Use the `Link` component for client-side navigation:
+
+```dart
+import 'package:jaspr_router/jaspr_router.dart';
+
+class Navigation extends StatelessComponent {
+  @override
+  Component build(BuildContext context) {
+    return nav([
+      Link(
+        to: '/',
+        child: text('Home'),
+      ),
+      Link(
+        to: '/about',
+        child: text('About'),
+      ),
+      Link(
+        to: '/contact',
+        child: text('Contact'),
+      ),
+    ]);
+  }
+}
+```
+
+### Styling active links
+
+Highlight the currently active route:
+
+```dart
+class NavLink extends StatelessComponent {
+  final String to;
+  final String label;
+  
+  const NavLink({required this.to, required this.label});
+  
+  @override
+  Component build(BuildContext context) {
+    final currentPath = Router.of(context).location;
+    final isActive = currentPath == to;
+    
+    return Link(
+      to: to,
+      child: text(label),
+      styles: Styles(
+        color: isActive ? Color.hex('#01589B') : Colors.black,
+        fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
+        textDecoration: TextDecoration.none,
+      ),
+    );
+  }
+}
+```
+
+## Programmatic navigation
+
+Navigate programmatically using `Router.of(context)`:
+
+```dart
+class LoginButton extends StatelessComponent {
+  @override
+  Component build(BuildContext context) {
+    return button(
+      onClick: (event) {
+        // Perform login logic
+        final success = login();
+        
+        if (success) {
+          // Navigate to dashboard
+          Router.of(context).push('/dashboard');
+        }
+      },
+      [text('Login')],
+    );
+  }
+}
+```
+
+### Navigation methods
+
+```dart
+final router = Router.of(context);
+
+// Push a new route
+router.push('/about');
+
+// Replace current route (no back button)
+router.replace('/login');
+
+// Go back
+router.back();
+
+// Push with named route
+router.pushNamed('user', pathParameters: {'id': '123'});
+```
+
+## Nested routes
+
+Create hierarchical route structures:
+
+```dart
+Route(
+  path: '/dashboard',
+  builder: (context, state) => DashboardLayout(),
+  routes: [
+    Route(
+      path: 'overview',
+      builder: (context, state) => DashboardOverview(),
+    ),
+    Route(
+      path: 'settings',
+      builder: (context, state) => DashboardSettings(),
+    ),
+    Route(
+      path: 'users/:id',
+      builder: (context, state) => DashboardUserDetail(
+        userId: state.pathParameters['id']!,
+      ),
+    ),
+  ],
+),
+```
+
+Layout component with nested outlet:
+
+```dart
+class DashboardLayout extends StatelessComponent {
+  @override
+  Component build(BuildContext context) {
+    return div([
+      // Sidebar navigation
+      aside([
+        Link(to: '/dashboard/overview', child: text('Overview')),
+        Link(to: '/dashboard/settings', child: text('Settings')),
+        Link(to: '/dashboard/users', child: text('Users')),
+      ]),
+      // Nested route content
+      main_([
+        // Child routes render here
+      ]),
+    ]);
+  }
+}
+```
+
+## Named routes
+
+Define named routes for easier navigation:
+
+```dart
+Router(
+  routes: [
+    Route(
+      name: 'home',
+      path: '/',
+      builder: (context, state) => HomePage(),
+    ),
+    Route(
+      name: 'user',
+      path: '/users/:id',
+      builder: (context, state) => UserProfile(
+        userId: state.pathParameters['id']!,
+      ),
+    ),
+  ],
+)
+```
+
+Navigate using route names:
+
+```dart
+Router.of(context).pushNamed(
+  'user',
+  pathParameters: {'id': '123'},
+  queryParameters: {'tab': 'profile'},
+);
+```
+
+## Redirects
+
+Redirect users to different routes:
+
+```dart
+Route(
+  path: '/old-path',
+  redirect: (context, state) => '/new-path',
+),
+
+// Conditional redirect
+Route(
+  path: '/admin',
+  redirect: (context, state) {
+    final isAuthenticated = checkAuth();
+    return isAuthenticated ? null : '/login';
+  },
+  builder: (context, state) => AdminPanel(),
+),
+```
+
+## 404 Not Found page
+
+Handle unknown routes with a catch-all:
+
+```dart
+Router(
+  routes: [
+    // ... your routes
+  ],
+  errorBuilder: (context, state) => NotFoundPage(),
+)
+```
+
+Example 404 page:
+
+```dart
+class NotFoundPage extends StatelessComponent {
+  @override
+  Component build(BuildContext context) {
+    return div([
+      h1([text('404 - Page Not Found')]),
+      p([text('The page you are looking for does not exist.')]),
+      Link(
+        to: '/',
+        child: text('Go to Home'),
+      ),
+    ]);
+  }
+}
+```
+
+## Route guards
+
+Protect routes with authentication checks:
+
+```dart
+Route(
+  path: '/profile',
+  builder: (context, state) {
+    final user = getCurrentUser();
+    
+    if (user == null) {
+      // Redirect to login
+      Future.microtask(() {
+        Router.of(context).push('/login');
+      });
+      return LoadingPage();
+    }
+    
+    return ProfilePage(user: user);
+  },
+),
+```
+
+## Lazy loading routes
+
+Load route components on demand to reduce initial bundle size:
+
+```dart
+import 'heavy_component.dart' deferred as heavy;
+
+Route(
+  path: '/heavy',
+  builder: (context, state) {
+    return LazyRoute(
+      loader: () async {
+        await heavy.loadLibrary();
+        return heavy.HeavyComponent();
+      },
+    );
+  },
+),
+```
+
+Lazy route component:
+
+```dart
+class LazyRoute extends StatefulComponent {
+  final Future<Component> Function() loader;
+  
+  const LazyRoute({required this.loader});
+  
+  @override
+  State<LazyRoute> createState() => _LazyRouteState();
+}
+
+class _LazyRouteState extends State<LazyRoute> {
+  Component? loadedComponent;
+  
+  @override
+  void initState() {
+    super.initState();
+    component.loader().then((comp) {
+      setState(() {
+        loadedComponent = comp;
+      });
+    });
+  }
+  
+  @override
+  Component build(BuildContext context) {
+    return loadedComponent ?? div([text('Loading...')]);
+  }
+}
+```
+
+## Complete navigation example
+
+Here's a complete multi-page app with navigation:
+
+```dart
+import 'package:jaspr/jaspr.dart';
+import 'package:jaspr_router/jaspr_router.dart';
+
+class App extends StatelessComponent {
+  @override
+  Component build(BuildContext context) {
+    return Router(
+      routes: [
+        Route(
+          name: 'home',
+          path: '/',
+          builder: (context, state) => Layout(
+            child: HomePage(),
+          ),
+        ),
+        Route(
+          name: 'products',
+          path: '/products',
+          builder: (context, state) => Layout(
+            child: ProductsPage(),
+          ),
+        ),
+        Route(
+          name: 'product',
+          path: '/products/:id',
+          builder: (context, state) => Layout(
+            child: ProductDetail(
+              productId: state.pathParameters['id']!,
+            ),
+          ),
+        ),
+        Route(
+          name: 'cart',
+          path: '/cart',
+          builder: (context, state) => Layout(
+            child: CartPage(),
+          ),
+        ),
+      ],
+      errorBuilder: (context, state) => Layout(
+        child: NotFoundPage(),
+      ),
+    );
+  }
+}
+
+class Layout extends StatelessComponent {
+  final Component child;
+  
+  const Layout({required this.child});
+  
+  @override
+  Component build(BuildContext context) {
+    return div([
+      header([
+        nav([
+          NavLink(to: '/', label: 'Home'),
+          NavLink(to: '/products', label: 'Products'),
+          NavLink(to: '/cart', label: 'Cart'),
+        ]),
+      ]),
+      main_([
+        child,
+      ]),
+      footer([
+        text('© 2024 My Store'),
+      ]),
+    ]);
+  }
+}
+```
+
+## Best practices
+
+<AccordionGroup>
+  <Accordion title="Use named routes for complex navigation">
+    Named routes make refactoring easier and reduce typos:
+    
+    ```dart
+    // Good
+    router.pushNamed('user', pathParameters: {'id': userId});
+    
+    // Avoid
+    router.push('/users/$userId');
+    ```
+  </Accordion>
+  
+  <Accordion title="Keep route logic simple">
+    Complex logic should be in components, not route builders:
+    
+    ```dart
+    // Good
+    Route(
+      path: '/dashboard',
+      builder: (context, state) => DashboardPage(),
+    )
+    
+    // Avoid
+    Route(
+      path: '/dashboard',
+      builder: (context, state) {
+        // Complex logic here
+        final user = fetchUser();
+        final settings = loadSettings();
+        // ...
+      },
+    )
+    ```
+  </Accordion>
+  
+  <Accordion title="Handle loading states">
+    Show loading indicators while lazy loading routes or fetching data
+  </Accordion>
+</AccordionGroup>
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Router API" icon="code" href="/api/components/router">
+    Complete Router component reference
+  </Card>
+  <Card title="Link API" icon="link" href="/api/components/link">
+    Link component documentation
+  </Card>
+  <Card title="jaspr_router plugin" icon="plug" href="/plugins/router">
+    Advanced routing features
+  </Card>
+  <Card title="State management" icon="database" href="/guides/state-management">
+    Manage state across routes
+  </Card>
+</CardGroup>

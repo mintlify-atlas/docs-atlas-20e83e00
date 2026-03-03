@@ -1,0 +1,405 @@
+---
+title: jaspr create
+description: Create a new Jaspr project with customizable templates, rendering modes, and project presets
+---
+
+The `jaspr create` command initializes a new Jaspr project with your chosen configuration.
+
+## Basic Usage
+
+```bash
+jaspr create <directory>
+```
+
+<CodeGroup>
+```bash Interactive Mode
+# CLI will prompt for all options
+jaspr create my_website
+```
+
+```bash Non-Interactive Mode
+# Specify all options via flags
+jaspr create my_website \
+  --mode server \
+  --routing multi-page \
+  --flutter none \
+  --backend shelf
+```
+
+```bash Current Directory
+# Create in current directory (must be empty)
+jaspr create .
+```
+</CodeGroup>
+
+## Project Presets
+
+Configure your project's rendering mode, routing, and features during creation.
+
+### Rendering Mode
+
+<ParamField path="--mode" type="option" default="interactive">
+  Choose the rendering mode for your project.
+  
+  **Options:**
+  - `static` - Build a statically pre-rendered site
+  - `server` - Build a server-rendered site
+  - `client` - Build a purely client-rendered site
+  
+  ```bash
+  jaspr create my_site --mode server
+  ```
+</ParamField>
+
+<Tabs>
+  <Tab title="Static">
+    Pre-renders all routes at build time. Best for:
+    - Marketing sites
+    - Blogs and documentation
+    - Sites with known routes
+    
+    ```bash
+    jaspr create docs_site --mode static
+    ```
+  </Tab>
+  
+  <Tab title="Server">
+    Renders on the server for each request. Best for:
+    - Dynamic content
+    - Personalized experiences
+    - SEO-critical applications
+    
+    ```bash
+    jaspr create app --mode server
+    ```
+  </Tab>
+  
+  <Tab title="Client">
+    Renders entirely in the browser. Best for:
+    - Web applications
+    - Internal dashboards
+    - Apps without SEO requirements
+    
+    ```bash
+    jaspr create dashboard --mode client
+    ```
+  </Tab>
+</Tabs>
+
+### Routing Strategy
+
+<ParamField path="--routing" type="option" default="interactive">
+  Choose how routing is handled in your application.
+  
+  **Options:**
+  - `none` - No preconfigured routing
+  - `multi-page` - Server-side routing (recommended for server/static modes)
+  - `single-page` - Client-side routing (for SPAs)
+  
+  ```bash
+  jaspr create my_site --routing multi-page
+  ```
+</ParamField>
+
+<Note>
+Multi-page routing is only available in `server` and `static` modes. Client mode can use `single-page` or `none`.
+</Note>
+
+<CodeGroup>
+```bash Multi-Page Routing
+# Server-side routing with separate pages
+jaspr create my_site \
+  --mode server \
+  --routing multi-page
+```
+
+```bash Single-Page App
+# Client-side routing (SPA)
+jaspr create my_app \
+  --mode client \
+  --routing single-page
+```
+
+```bash No Routing
+# Single page, no router
+jaspr create landing_page \
+  --mode static \
+  --routing none
+```
+</CodeGroup>
+
+### Flutter Support
+
+<ParamField path="--flutter" type="option" default="interactive">
+  Configure Flutter integration for your project.
+  
+  **Options:**
+  - `none` - No Flutter support
+  - `embedded` - Embed a Flutter app within your site
+  - `plugins-only` - Enable Flutter web plugins without embedding
+  
+  ```bash
+  jaspr create my_site --flutter embedded
+  ```
+</ParamField>
+
+<AccordionGroup>
+  <Accordion title="Embedded Flutter">
+    Embeds a complete Flutter application within your Jaspr site.
+    
+    ```bash
+    jaspr create hybrid_app --flutter embedded
+    ```
+    
+    **Use cases:**
+    - Mixing Jaspr pages with Flutter widgets
+    - Gradual migration from Flutter Web
+    - Rich interactive components
+  </Accordion>
+
+  <Accordion title="Plugins Only">
+    Enables use of Flutter web plugins without embedding the full Flutter runtime.
+    
+    ```bash
+    jaspr create my_site --flutter plugins-only
+    ```
+    
+    **Use cases:**
+    - Using Flutter packages (e.g., url_launcher, shared_preferences)
+    - Lighter weight than full embedding
+  </Accordion>
+</AccordionGroup>
+
+### Backend Framework
+
+<ParamField path="--backend" type="option" default="interactive">
+  Choose a custom backend framework (only valid in server mode).
+  
+  **Options:**
+  - `none` - Use Jaspr's built-in server
+  - `shelf` - Integrate with the Shelf package
+  
+  ```bash
+  jaspr create api_server \
+    --mode server \
+    --backend shelf
+  ```
+</ParamField>
+
+<Info>
+The `--backend` option is only available when `--mode` is set to `server`.
+</Info>
+
+## Templates
+
+<ParamField path="--template" type="option">
+  Use a predefined template instead of the default scaffold.
+  
+  **Available templates:**
+  - `docs` - A template for creating documentation sites with jaspr_content
+  
+  ```bash
+  jaspr create my_docs --template docs
+  ```
+</ParamField>
+
+### Documentation Template
+
+Create a documentation site with `jaspr_content`:
+
+```bash
+jaspr create my_docs --template docs
+```
+
+This template includes:
+- Pre-configured `jaspr_content` package
+- Documentation-optimized layout
+- Navigation and search
+- Markdown content support
+
+## Additional Options
+
+<ParamField path="--pub-get" type="flag" default="true">
+  Run `dart pub get` after creating the project.
+  
+  ```bash
+  # Skip dependency installation
+  jaspr create my_site --no-pub-get
+  ```
+</ParamField>
+
+<ParamField path="--verbose" type="flag" default="false">
+  Enable verbose logging during project creation.
+  
+  ```bash
+  jaspr create my_site --verbose
+  ```
+</ParamField>
+
+## Output Example
+
+<CodeGroup>
+```bash Terminal Output
+$ jaspr create my_website --mode server --routing multi-page
+
+✓ Generating project... (1.2s)
+✓ Generated 15 file(s)
+✓ Resolving dependencies... (3.4s)
+
+Created project my_website! In order to get started, run the following commands:
+
+  cd my_website
+  jaspr serve
+```
+
+```bash Verbose Output
+$ jaspr create my_website --mode server --routing multi-page --verbose
+
+[CLI] Generating project...
+[CLI] Using jaspr version: 0.22.3
+[CLI] Using jaspr_builder version: 0.22.3
+[CLI] Using jaspr_router version: 0.10.0
+[CLI] Using jaspr_lints version: 2.0.0
+✓ Generating project... (1.2s)
+✓ Generated 15 file(s)
+  Created lib/main.server.dart
+  Created lib/app.dart
+  Created lib/pages/home.dart
+  Created web/main.dart
+  Created web/index.html
+  ...
+[CLI] Running pub get...
+✓ Resolving dependencies... (3.4s)
+
+Created project my_website! In order to get started, run the following commands:
+
+  cd my_website
+  jaspr serve
+```
+</CodeGroup>
+
+## Project Structure
+
+The generated project structure varies based on your configuration:
+
+<Tabs>
+  <Tab title="Server Mode">
+    ```
+    my_website/
+    ├── lib/
+    │   ├── main.server.dart    # Server entry point
+    │   ├── app.dart            # Root component
+    │   ├── components/         # Reusable components
+    │   └── pages/              # Page components (if routing enabled)
+    ├── web/
+    │   ├── main.dart           # Client entry point
+    │   └── index.html
+    ├── pubspec.yaml
+    └── build.yaml              # Build configuration
+    ```
+  </Tab>
+  
+  <Tab title="Static Mode">
+    ```
+    my_website/
+    ├── lib/
+    │   ├── main.server.dart    # Generator entry point
+    │   ├── app.dart            # Root component
+    │   └── pages/              # Static pages
+    ├── web/
+    │   ├── main.dart
+    │   └── index.html
+    ├── pubspec.yaml
+    └── build.yaml
+    ```
+  </Tab>
+  
+  <Tab title="Client Mode">
+    ```
+    my_website/
+    ├── lib/
+    │   ├── app.dart            # Root component
+    │   ├── components/
+    │   └── pages/              # Client-side pages
+    ├── web/
+    │   ├── main.dart           # Entry point
+    │   └── index.html
+    └── pubspec.yaml
+    ```
+  </Tab>
+</Tabs>
+
+## Complete Examples
+
+<CodeGroup>
+```bash Blog Site (Static)
+jaspr create my_blog \
+  --mode static \
+  --routing multi-page \
+  --flutter none \
+  --pub-get
+```
+
+```bash Web App (Server)
+jaspr create my_app \
+  --mode server \
+  --routing multi-page \
+  --flutter plugins-only \
+  --backend shelf
+```
+
+```bash Dashboard (Client)
+jaspr create dashboard \
+  --mode client \
+  --routing single-page \
+  --flutter none
+```
+
+```bash Documentation Site
+jaspr create docs \
+  --template docs
+```
+</CodeGroup>
+
+## Validation Rules
+
+<Warning>
+The following validation rules apply:
+
+- Directory must not exist (or be empty if using `.`)
+- Project name must match pattern: `[a-z_][a-z0-9_]*`
+- Multi-page routing requires server or static mode
+- Backend option only valid in server mode
+</Warning>
+
+## Next Steps
+
+After creating your project:
+
+<Steps>
+  <Step title="Navigate to your project">
+    ```bash
+    cd my_website
+    ```
+  </Step>
+
+  <Step title="Start the development server">
+    ```bash
+    jaspr serve
+    ```
+    
+    See the [serve command](/cli/serve) documentation for development options.
+  </Step>
+
+  <Step title="Build for production">
+    ```bash
+    jaspr build
+    ```
+    
+    See the [build command](/cli/build) documentation for build options.
+  </Step>
+</Steps>
+
+<Card title="Quick Start Guide" icon="rocket" href="/quick-start">
+  Learn more about building your first Jaspr application
+</Card>

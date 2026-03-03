@@ -1,0 +1,193 @@
+---
+title: Text Component
+description: Render plain text nodes in Jaspr applications
+---
+
+The `Text` component renders a plain text node in the DOM with no additional HTML elements or styling.
+
+## Basic Usage
+
+```dart
+import 'package:jaspr/jaspr.dart';
+
+// Using the factory constructor
+Component.text('Hello, World!')
+```
+
+## API Reference
+
+<ParamField path="text" type="String" required>
+  The text content to render.
+</ParamField>
+
+<ParamField path="key" type="Key?">
+  Optional key for component identity and state preservation.
+</ParamField>
+
+## Examples
+
+### Simple Text
+
+```dart
+class Greeting extends StatelessComponent {
+  @override
+  Component build(BuildContext context) {
+    return Component.text('Welcome to Jaspr!');
+  }
+}
+```
+
+### Text in HTML Elements
+
+Text components are typically used as children of HTML elements:
+
+```dart
+import 'package:jaspr/html.dart';
+
+div([
+  Component.text('This is plain text'),
+])
+
+p([
+  Component.text('A paragraph of text'),
+])
+
+span([
+  Component.text('Inline text'),
+])
+```
+
+### Multiple Text Nodes
+
+```dart
+p([
+  Component.text('Hello '),
+  strong([Component.text('World')]),
+  Component.text('!'),
+])
+```
+
+Renders:
+```html
+<p>Hello <strong>World</strong>!</p>
+```
+
+### Dynamic Text
+
+```dart
+class Counter extends StatefulComponent {
+  @override
+  State<Counter> createState() => _CounterState();
+}
+
+class _CounterState extends State<Counter> {
+  int count = 0;
+
+  @override
+  Component build(BuildContext context) {
+    return div([
+      Component.text('Count: $count'),
+      button(
+        [Component.text('Increment')],
+        onClick: () => setState(() => count++),
+      ),
+    ]);
+  }
+}
+```
+
+## Text Styling
+
+Text components inherit styling from their parent elements. Use HTML elements or inline styles to control text appearance:
+
+```dart
+// Using semantic HTML
+strong([Component.text('Bold text')])
+em([Component.text('Italic text')])
+code([Component.text('Code text')])
+
+// Using inline styles
+span(
+  [Component.text('Styled text')],
+  styles: Styles(
+    color: Colors.blue,
+    fontSize: 18.px,
+    fontWeight: FontWeight.bold,
+  ),
+)
+```
+
+## Text Escaping
+
+The `Text` component automatically escapes HTML entities for security:
+
+```dart
+Component.text('<script>alert("XSS")</script>')
+// Renders as escaped text: &lt;script&gt;alert("XSS")&lt;/script&gt;
+```
+
+To render raw HTML (use with caution), see [RawText](/api/html/raw-text).
+
+## Whitespace Handling
+
+Whitespace in text content follows standard HTML rules:
+
+```dart
+Component.text('Multiple    spaces   collapse')
+// Renders with single spaces
+
+Component.text('Line\nbreaks\nare\nignored')
+// Renders on a single line
+
+// To preserve whitespace:
+pre([Component.text('Preserved  \n  whitespace')])
+```
+
+## Performance Notes
+
+- Text components are lightweight and optimized for rendering performance
+- Text updates only re-render when the text content changes
+- String interpolation in text is computed during build and doesn't create reactivity
+
+## Common Patterns
+
+### Conditional Text
+
+```dart
+Component.text(isLoggedIn ? 'Welcome back!' : 'Please log in')
+```
+
+### Formatted Text
+
+```dart
+Component.text('Price: \$${price.toStringAsFixed(2)}')
+```
+
+### Empty Text
+
+```dart
+// For truly empty content, use Component.empty() instead
+Component.empty()
+```
+
+## Related Components
+
+- [Fragment](/api/html/fragment) - Render multiple components without a wrapper
+- [RawText](/api/html/raw-text) - Render unescaped HTML (use with caution)
+- [Text HTML Elements](/api/html/text-elements) - Semantic text elements (b, i, strong, etc.)
+
+## Type Definition
+
+```dart
+/// Represents a plain text node with no additional properties.
+///
+/// Styling is done through the parent element(s) and their styles.
+class Text extends Component {
+  const Text._(this.text, {super.key});
+
+  final String text;
+
+  @override
+  Element createElement() => TextElement(this);
+}
+```

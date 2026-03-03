@@ -1,0 +1,311 @@
+---
+title: Testing
+description: Learn how to test Jaspr components with jaspr_test
+---
+
+Jaspr comes with its own testing package `jaspr_test`, built as a layer on top of `package:test` with a similar API to `flutter_test`.
+
+## Setup
+
+Add `jaspr_test` as a dev dependency to your project:
+
+```bash
+dart pub add jaspr_test --dev
+```
+
+## Three Test Types
+
+Since Jaspr is a fullstack framework, there are **three** test functions to choose from:
+
+### 1. Component Tests
+
+Unit-test components in a simulated testing environment using `testComponents`.
+
+```dart
+import 'package:jaspr_test/jaspr_test.dart';
+import 'my_component.dart';
+
+void main() {
+  group('simple component test', () {
+    testComponents('renders my component', (tester) async {
+      // We want to test the MyComponent component.
+      // Assume this shows a count and a button to increase it.
+      tester.pumpComponent(MyComponent());
+
+      // Should render a [Text] component with content 'Count: 0'.
+      expect(find.text('Count: 0'), findsOneComponent);
+
+      // Searches for the <button> element and simulates a click event.
+      await tester.click(find.tag('button'));
+
+      // Should render a [Text] component with content 'Count: 1'.
+      expect(find.text('Count: 1'), findsOneComponent);
+    });
+  });
+}
+```
+
+<Tip>
+`jaspr_test` exports `package:test`, so no additional import is needed.
+</Tip>
+
+### 2. Client Tests
+
+Test components and DOM interactions in a headless browser environment using `testClient`.
+
+```dart
+import 'package:jaspr_test/jaspr_test.dart';
+
+void main() {
+  testClient('renders in browser', (tester) async {
+    tester.pumpComponent(MyComponent());
+    
+    // Test actual DOM interactions
+    await tester.click(find.tag('button'));
+    
+    // Access real DOM nodes
+    final node = tester.findNode(find.tag('div'));
+  }, location: '/custom-path');
+}
+```
+
+**Additional options:**
+- `location` - Simulate a specific URL path
+- `initialStateData` - Simulate synced state from the server
+
+### 3. Server Tests
+
+Test server-side rendering in a simulated server environment using `testServer`.
+
+```dart
+import 'package:jaspr_test/server_test.dart';
+
+void main() {
+  testServer('should serve component', (tester) async {
+    tester.pumpComponent(
+      Builder(
+        builder: (context) {
+          return App();
+        },
+      ),
+    );
+
+    final response = await tester.request('/');
+
+    expect(response.statusCode, equals(200));
+    expect(response.document?.body, isNotNull);
+    
+    final html = response.document!.body!.innerHtml;
+    expect(html, contains('Expected content'));
+  });
+}
+```
+
+This spins up a virtual HTTP server where you can send requests and test the server-rendered response.
+
+## Finders
+
+Use the `find` constant to locate components in the component tree:
+
+```dart
+// Find by tag name
+find.tag('button')
+
+// Find by text content
+find.text('Click Me')
+
+// Find text containing pattern
+find.textContaining('Click')
+find.textContaining(RegExp(r'\w+'))
+
+// Find by component type
+find.byType(MyComponent)
+
+// Find by key
+find.byKey(GlobalKey('my-key'))
+
+// Find by component instance
+find.byComponent(myComponentInstance)
+
+// Find by predicate
+find.byComponentPredicate(
+  (Component c) => c is DomComponent && c.classes.contains('alert'),
+  description: 'component with alert class',
+)
+
+// Find descendants
+find.descendant(
+  of: find.byType(Container),
+  matching: find.text('value'),
+)
+
+// Find ancestors
+find.ancestor(
+  of: find.text('faded'),
+  matching: find.byType(Opacity),
+)
+
+// Chain finders
+find.text('Click').first
+find.tag('button').last
+find.tag('li').at(2)
+```
+
+## Matchers
+
+Jaspr test provides custom matchers for component assertions:
+
+```dart
+// Assert no matching components
+expect(find.text('Save'), findsNothing);
+
+// Assert at least one component
+expect(find.tag('button'), findsComponents);
+
+// Assert exactly one component
+expect(find.text('Title'), findsOneComponent);
+
+// Assert specific number of components
+expect(find.tag('li'), findsNComponents(5));
+```
+
+## Component Tester API
+
+The `ComponentTester` provides methods to interact with components:
+
+```dart
+testComponents('interaction test', (tester) async {
+  tester.pumpComponent(MyComponent());
+  
+  // Click an element
+  await tester.click(find.tag('button'));
+  
+  // Dispatch custom events
+  tester.dispatchEvent(find.tag('input'), 'focus');
+  
+  // Pump next frame
+  await tester.pump();
+});
+```
+
+## Client Tester API
+
+The `ClientTester` extends component testing with browser-specific features:
+
+```dart
+testClient('browser interaction test', (tester) async {
+  tester.pumpComponent(MyComponent());
+  
+  // Click with mouse event
+  await tester.click(find.tag('button'));
+  
+  // Input events
+  await tester.input(
+    find.tag('input'),
+    value: 'new text',
+  );
+  
+  // Change events
+  await tester.change(
+    find.tag('checkbox'),
+    checked: true,
+  );
+  
+  // Access real DOM nodes
+  final element = tester.findNode<web.HTMLElement>(find.tag('div'));
+});
+```
+
+## Server Tester API
+
+The `ServerTester` allows testing server-rendered responses:
+
+```dart
+testServer('server rendering test', (tester) async {
+  tester.pumpComponent(MyApp());
+  
+  // Make HTTP request
+  final response = await tester.request('/path');
+  
+  // Check response
+  expect(response.statusCode, equals(200));
+  expect(response.headers['content-type'], contains('text/html'));
+  expect(response.body, contains('Expected HTML'));
+  
+  // Parse and query the document
+  final doc = response.document;
+  final title = doc?.querySelector('h1')?.text;
+  expect(title, equals('Welcome'));
+});
+```
+
+<Warning>
+Server tests run in a simulated environment. They don't test actual HTTP server configuration or middleware.
+</Warning>
+
+## Best Practices
+
+<Steps>
+  <Step title="Organize tests by feature">
+    Group related tests together and use descriptive test names that explain the expected behavior.
+  </Step>
+  
+  <Step title="Test user interactions">
+    Focus on testing how users interact with your components rather than implementation details.
+  </Step>
+  
+  <Step title="Use appropriate test type">
+    Choose `testComponents` for unit tests, `testClient` for browser-specific features, and `testServer` for SSR validation.
+  </Step>
+  
+  <Step title="Verify both structure and content">
+    Test that components render the correct HTML structure and display the expected content.
+  </Step>
+</Steps>
+
+## Example: Full Test Suite
+
+```dart
+import 'package:jaspr_test/jaspr_test.dart';
+import 'counter_component.dart';
+
+void main() {
+  group('Counter Component', () {
+    testComponents('starts at zero', (tester) async {
+      tester.pumpComponent(Counter());
+      expect(find.text('Count: 0'), findsOneComponent);
+    });
+    
+    testComponents('increments on click', (tester) async {
+      tester.pumpComponent(Counter());
+      
+      await tester.click(find.tag('button'));
+      expect(find.text('Count: 1'), findsOneComponent);
+      
+      await tester.click(find.tag('button'));
+      expect(find.text('Count: 2'), findsOneComponent);
+    });
+    
+    testComponents('resets when requested', (tester) async {
+      tester.pumpComponent(Counter());
+      
+      await tester.click(find.tag('button'));
+      await tester.click(find.tag('button'));
+      expect(find.text('Count: 2'), findsOneComponent);
+      
+      await tester.click(find.text('Reset'));
+      expect(find.text('Count: 0'), findsOneComponent);
+    });
+  });
+}
+```
+
+## Running Tests
+
+Run your tests using the Dart test runner:
+
+```bash
+dart test
+```
+
+For more examples, check out the [tests in the Jaspr package](https://github.com/schultek/jaspr/tree/main/packages/jaspr/test).

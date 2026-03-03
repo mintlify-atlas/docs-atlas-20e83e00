@@ -1,0 +1,318 @@
+---
+title: jaspr_serverpod
+description: Full-stack integration with Serverpod backend framework
+---
+
+Seamless integration between Jaspr and Serverpod, enabling server-side rendering with full session access and unified development workflow.
+
+## Installation
+
+```bash
+dart pub add jaspr_serverpod
+```
+
+**Current version:** 0.6.0
+
+## Overview
+
+This package provides:
+
+- **JasprRoute** - Serverpod route for server-side rendering Jaspr components
+- **context.session** - Extension to access Serverpod session in components
+- **JasprConnectivityMonitor** - Connectivity monitoring for Serverpod client
+
+## Setup
+
+Refer to the [official setup guide](https://pub.dev/documentation/jaspr_serverpod/latest/topics/Setup-topic.html) for complete integration instructions.
+
+### Basic Integration
+
+1. Add jaspr_serverpod to your Serverpod server package
+2. Create a JasprRoute in your web server
+3. Use the context.session extension in your components
+
+## JasprRoute
+
+Create a route that renders Jaspr components:
+
+```dart
+import 'package:jaspr/server.dart';
+import 'package:jaspr_serverpod/jaspr_serverpod.dart';
+import 'package:serverpod/serverpod.dart';
+
+class MyJasprRoute extends JasprRoute {
+  @override
+  Future<Component> build(Session session, HttpRequest request) async {
+    // Access session and request
+    final user = await session.auth.authenticatedUser;
+    
+    // Return your root component
+    return App(user: user);
+  }
+}
+
+// Register in your server
+class MyServer extends Serverpod {
+  MyServer(super.args) {
+    webServer.addRoute(
+      MyJasprRoute(),
+      '/*',
+    );
+  }
+}
+```
+
+## Accessing Session
+
+Use the `context.session` extension to access the Serverpod session anywhere in your component tree:
+
+```dart
+import 'package:jaspr/jaspr.dart';
+import 'package:jaspr_serverpod/jaspr_serverpod.dart';
+
+class UserProfile extends StatelessComponent {
+  @override
+  Component build(BuildContext context) {
+    // Get the current session
+    final session = context.session;
+    
+    return div([
+      text('Session ID: ${session.id}'),
+    ]);
+  }
+}
+```
+
+### Using Session for Data Fetching
+
+```dart
+class Dashboard extends AsyncStatelessComponent {
+  @override
+  Future<Component> build(BuildContext context) async {
+    final session = context.session;
+    
+    // Use session to fetch data
+    final user = await session.auth.authenticatedUser;
+    final data = await session.db.query(/* ... */);
+    
+    if (user == null) {
+      return Login();
+    }
+    
+    return div([
+      h1([text('Welcome, ${user.name}')]),
+      UserData(data: data),
+    ]);
+  }
+}
+```
+
+## Connectivity Monitor
+
+Use `JasprConnectivityMonitor` with your generated Serverpod client:
+
+```dart
+import 'package:jaspr_serverpod/jaspr_serverpod.dart';
+import 'package:my_server_client/my_server_client.dart';
+
+final client = Client(
+  'http://localhost:8080/',
+  connectivityMonitor: JasprConnectivityMonitor(),
+);
+```
+
+This provides proper connectivity monitoring for web-based Jaspr applications.
+
+## Development Workflow
+
+Run both Jaspr and Serverpod together during development:
+
+```bash
+jaspr serve
+```
+
+This command:
+- Starts the Jaspr development server
+- Runs Serverpod in debug mode
+- Enables hot-reload for Jaspr components
+- Watches for server changes
+
+**Passing arguments to Serverpod:**
+
+```bash
+jaspr serve -- --apply-migrations
+```
+
+Use `--` before Serverpod arguments.
+
+## Building for Production
+
+Build your project for deployment:
+
+```bash
+jaspr build
+```
+
+This compiles both the Jaspr client and server code.
+
+### Docker Integration
+
+Modify your Serverpod Dockerfile to integrate Jaspr:
+
+```dockerfile
+FROM dart:3.2.5 AS build
+
+WORKDIR /app
+COPY . .
+
+# Install Jaspr CLI
+RUN dart pub global activate jaspr_cli
+RUN dart pub get
+
+# Build with Jaspr instead of standard Dart compile
+RUN jaspr build -v
+
+FROM busybox:1.36.1-glibc
+
+COPY --from=build /runtime/ /
+
+# Copy Jaspr build output instead of bin/main
+COPY --from=build /app/build/jaspr/app /app/bin/main
+COPY --from=build /app/config/ config/
+
+# Copy Jaspr web output instead of web/
+COPY --from=build /app/build/jaspr/web/ web/
+
+EXPOSE 8080
+EXPOSE 8081
+EXPOSE 8082
+
+CMD ["/app/bin/main", "--mode=production"]
+```
+
+Key changes:
+- Activate `jaspr_cli` during build
+- Use `jaspr build` instead of `dart compile exe`
+- Copy from `build/jaspr/app` instead of `bin/main`
+- Copy from `build/jaspr/web/` instead of `web/`
+
+## Complete Example
+
+```dart
+import 'package:jaspr/server.dart';
+import 'package:jaspr_serverpod/jaspr_serverpod.dart';
+import 'package:serverpod/serverpod.dart';
+
+// Define your Jaspr route
+class AppRoute extends JasprRoute {
+  @override
+  Future<Component> build(Session session, HttpRequest request) async {
+    return App();
+  }
+}
+
+// Root component
+class App extends StatelessComponent {
+  @override
+  Component build(BuildContext context) {
+    return Document(
+      title: 'My App',
+      body: MainPage(),
+    );
+  }
+}
+
+// Component using session
+class MainPage extends AsyncStatelessComponent {
+  @override
+  Future<Component> build(BuildContext context) async {
+    final session = context.session;
+    final user = await session.auth.authenticatedUser;
+    
+    return div([
+      if (user != null) ..[
+        h1([text('Welcome, ${user.name}')]),
+        UserDashboard(user: user),
+      ] else ..[
+        h1([text('Please log in')]),
+        LoginForm(),
+      ],
+    ]);
+  }
+}
+
+// Server setup
+void main(List<String> args) async {
+  final serverpod = Serverpod(
+    args,
+    Protocol(),
+    Endpoints(),
+  );
+
+  // Add Jaspr route
+  serverpod.webServer.addRoute(
+    AppRoute(),
+    '/*',
+  );
+
+  await serverpod.start();
+}
+```
+
+## Authentication Example
+
+```dart
+class ProtectedPage extends AsyncStatelessComponent {
+  @override
+  Future<Component> build(BuildContext context) async {
+    final session = context.session;
+    final user = await session.auth.authenticatedUser;
+    
+    if (user == null) {
+      // Redirect to login
+      return Login(
+        redirect: context.url,
+      );
+    }
+    
+    // Check permissions
+    final hasAccess = await checkUserPermissions(session, user);
+    if (!hasAccess) {
+      return Forbidden();
+    }
+    
+    return SecureContent(user: user);
+  }
+}
+```
+
+## Type-Safe API Calls
+
+Combine with Serverpod's generated client for type-safe communication:
+
+```dart
+import 'package:my_server_client/my_server_client.dart';
+
+class DataDisplay extends AsyncStatelessComponent {
+  @override
+  Future<Component> build(BuildContext context) async {
+    final session = context.session;
+    
+    // Type-safe endpoint calls
+    final items = await Endpoints.items.getAll(session);
+    
+    return div(
+      items.map((item) => ItemCard(item: item)).toList(),
+    );
+  }
+}
+```
+
+## Resources
+
+- [Setup Guide](https://pub.dev/documentation/jaspr_serverpod/latest/topics/Setup-topic.html)
+- [Basic Example](https://github.com/schultek/jaspr/tree/main/examples/backend_serverpod)
+- [Full Demo Project](https://github.com/schultek/jaspr/tree/main/apps/dart_quotes_server)
+- [GitHub Repository](https://github.com/schultek/jaspr/tree/main/packages/jaspr_serverpod)
+- [API Documentation](https://pub.dev/documentation/jaspr_serverpod)
+- [Serverpod Documentation](https://serverpod.dev)

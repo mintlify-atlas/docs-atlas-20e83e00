@@ -1,0 +1,517 @@
+---
+title: Custom Backend Integration
+description: Integrate Jaspr with custom backend frameworks and servers
+---
+
+Jaspr can integrate with any Dart backend framework, giving you flexibility to use your preferred server architecture while rendering Jaspr components.
+
+## Overview
+
+Instead of using Jaspr's built-in server, you can:
+- Integrate with existing Dart backend frameworks
+- Use custom server logic and middleware
+- Leverage framework-specific features (routing, databases, etc.)
+- Gradually adopt Jaspr in existing projects
+
+## Integration with Shelf
+
+Shelf is Dart's standard HTTP middleware framework.
+
+### Setup
+
+Add dependencies:
+
+```yaml
+dependencies:
+  jaspr: ^latest
+  shelf: ^latest
+  shelf_router: ^latest
+```
+
+### Basic Integration
+
+```dart
+import 'dart:io';
+import 'package:jaspr/server.dart';
+import 'package:shelf/shelf.dart';
+import 'package:shelf/shelf_io.dart' as shelf_io;
+import 'package:shelf_router/shelf_router.dart';
+import 'app.dart';
+
+void main() async {
+  // Initialize Jaspr
+  Jaspr.initializeApp();
+
+  final router = Router();
+
+  // Regular shelf route
+  router.get('/api/hello', (request) {
+    return Response.ok('Hello from Shelf API');
+  });
+
+  // Mount Jaspr app on a specific path
+  router.mount(
+    '/app',
+    serveApp((request, render) {
+      // Access the shelf request
+      print("Request: ${request.requestedUri}");
+      
+      // Render Jaspr components
+      return render(
+        Document(
+          base: '/app', // Set base path for assets
+          body: App(),
+        ),
+      );
+    }),
+  );
+
+  // Serve manually rendered components
+  router.get('/hello', (request) async {
+    final html = await renderComponent(
+      Document(
+        base: '/app',
+        body: Hello(),
+      ),
+    );
+    
+    return Response.ok(
+      html,
+      headers: {'Content-Type': 'text/html'},
+    );
+  });
+
+  // Create handler with middleware
+  final handler = const Pipeline()
+    .addMiddleware(logRequests())
+    .addHandler(router.call);
+
+  // Start server
+  final port = int.parse(Platform.environment['PORT'] ?? '8080');
+  final server = await shelf_io.serve(
+    handler,
+    InternetAddress.anyIPv4,
+    port,
+    shared: true,
+  );
+
+  server.autoCompress = true;
+  print('Serving at http://${server.address.host}:${server.port}');
+}
+```
+
+<Tip>
+Set the `base` parameter on the Document to ensure assets load from the correct path when mounting on routes other than `/`.
+</Tip>
+
+### Accessing Request Data
+
+Pass request data to your components:
+
+```dart
+router.get('/user/<id>', (Request request, String id) async {
+  return serveApp((request, render) {
+    return render(
+      Document(
+        body: UserProfile(userId: id),
+      ),
+    );
+  })(request);
+});
+```
+
+## Integration with Dart Frog
+
+Dart Frog is a fast, minimalist backend framework.
+
+### Setup
+
+Install Dart Frog:
+
+```bash
+dart pub global activate dart_frog_cli
+```
+
+Create a helper for Jaspr integration:
+
+```dart
+// lib/utils.server.dart
+import 'package:dart_frog/dart_frog.dart';
+import 'package:jaspr/server.dart';
+import 'main.server.options.dart';
+
+/// Initialize Jaspr for dart_frog
+Middleware serveJasprApp() {
+  Jaspr.initializeApp(options: defaultServerOptions);
+  
+  return provider<Handler>((context) {
+    return (request) {
+      return Handler.sync((req) => Response(statusCode: 404))(request);
+    };
+  });
+}
+
+/// Render a Jaspr component as a Response
+Future<Response> renderJasprComponent(
+  RequestContext context,
+  Component component,
+) async {
+  final html = await renderComponent(
+    Document(body: component),
+  );
+  
+  return Response(
+    body: html,
+    headers: {'Content-Type': 'text/html'},
+  );
+}
+```
+
+### Middleware Setup
+
+```dart
+// routes/_middleware.dart
+import 'package:dart_frog/dart_frog.dart';
+import '../lib/utils.server.dart';
+
+/// Jaspr middleware to serve assets
+var jasprMiddleware = serveJasprApp();
+
+Handler middleware(Handler handler) {
+  return handler.use(jasprMiddleware);
+}
+```
+
+### Route Handler
+
+```dart
+// routes/counter/index.dart
+import 'package:dart_frog/dart_frog.dart';
+import '../../lib/components/counter.dart';
+import '../../lib/utils.server.dart';
+
+Future<Response> onRequest(RequestContext context) {
+  return renderJasprComponent(context, Counter());
+}
+```
+
+<Warning>
+Dart Frog requires the middleware to be set up correctly to serve Jaspr's compiled JavaScript files.
+</Warning>
+
+## Integration with Serverpod
+
+Serverpod is a full-featured backend framework with ORM and API generation.
+
+### Setup
+
+```dart
+// lib/server.dart
+import 'package:jaspr/server.dart';
+import 'package:serverpod/serverpod.dart';
+import 'generated/protocol.dart';
+import 'generated/endpoints.dart';
+import 'web/routes/root.dart';
+
+void main(List<String> args) async {
+  // Initialize Serverpod
+  final pod = Serverpod(
+    args,
+    Protocol(),
+    Endpoints(),
+  );
+
+  // Initialize Jaspr
+  Jaspr.initializeApp();
+
+  // Add Jaspr routes to Serverpod's web server
+  pod.webServer.addRoute(RootRoute(), '/*');
+
+  // Start server
+  await pod.start();
+}
+```
+
+### Custom Route Handler
+
+```dart
+// lib/src/web/routes/root.dart
+import 'package:jaspr/server.dart';
+import 'package:serverpod/serverpod.dart';
+import '../../components/app.dart';
+
+class RootRoute extends WidgetRoute {
+  @override
+  Future<Widget> build(Session session, HttpRequest request) async {
+    // Access Serverpod session
+    final user = await session.auth.authenticatedUser;
+    
+    return Document(
+      body: App(user: user),
+    );
+  }
+}
+```
+
+## Manual Component Rendering
+
+Render components to HTML strings for maximum control:
+
+```dart
+import 'package:jaspr/server.dart';
+
+Future<String> renderMyComponent() async {
+  final html = await renderComponent(
+    Document(
+      head: [
+        meta(charset: 'utf-8'),
+        meta(name: 'viewport', content: 'width=device-width'),
+        title([text('My App')]),
+      ],
+      body: MyComponent(),
+    ),
+  );
+  
+  return html;
+}
+```
+
+Use in any HTTP handler:
+
+```dart
+router.get('/page', (Request request) async {
+  final html = await renderMyComponent();
+  return Response.ok(
+    html,
+    headers: {'Content-Type': 'text/html; charset=utf-8'},
+  );
+});
+```
+
+## Serving Static Assets
+
+Jaspr generates JavaScript and other assets that must be served:
+
+### With Shelf
+
+```dart
+import 'package:shelf_static/shelf_static.dart';
+
+router.mount(
+  '/web',
+  createStaticHandler(
+    'build/jaspr/web',
+    defaultDocument: 'index.html',
+  ),
+);
+```
+
+### Custom Handler
+
+```dart
+import 'dart:io';
+
+router.get('/web/<path|.*>', (Request request, String path) async {
+  final file = File('build/jaspr/web/$path');
+  
+  if (!await file.exists()) {
+    return Response.notFound('Not Found');
+  }
+  
+  final bytes = await file.readAsBytes();
+  final mimeType = _getMimeType(path);
+  
+  return Response.ok(
+    bytes,
+    headers: {
+      'Content-Type': mimeType,
+      'Cache-Control': 'public, max-age=31536000',
+    },
+  );
+});
+
+String _getMimeType(String path) {
+  if (path.endsWith('.js')) return 'application/javascript';
+  if (path.endsWith('.css')) return 'text/css';
+  if (path.endsWith('.html')) return 'text/html';
+  if (path.endsWith('.json')) return 'application/json';
+  return 'application/octet-stream';
+}
+```
+
+## Database Integration
+
+Integrate with databases through your backend framework:
+
+```dart
+import 'package:postgres/postgres.dart';
+import 'package:jaspr/server.dart';
+
+class DatabaseService {
+  late PostgreSQLConnection db;
+  
+  Future<void> connect() async {
+    db = PostgreSQLConnection(
+      'localhost', 5432, 'mydb',
+      username: 'user',
+      password: 'pass',
+    );
+    await db.open();
+  }
+  
+  Future<List<User>> getUsers() async {
+    final results = await db.query('SELECT * FROM users');
+    return results.map((row) => User.fromRow(row)).toList();
+  }
+}
+
+// In your route handler
+router.get('/users', (Request request) async {
+  final users = await db.getUsers();
+  
+  return serveApp((request, render) {
+    return render(
+      Document(
+        body: UserList(users: users),
+      ),
+    );
+  })(request);
+});
+```
+
+## Authentication
+
+Implement authentication in your backend:
+
+```dart
+import 'package:shelf/shelf.dart';
+import 'package:shelf_router/shelf_router.dart';
+
+// Authentication middleware
+Middleware authMiddleware() {
+  return (Handler handler) {
+    return (Request request) async {
+      final token = request.headers['Authorization'];
+      
+      if (token == null || !await validateToken(token)) {
+        return Response.forbidden('Unauthorized');
+      }
+      
+      final user = await getUserFromToken(token);
+      
+      // Add user to request context
+      return handler(
+        request.change(context: {'user': user}),
+      );
+    };
+  };
+}
+
+// Use in routes
+final protectedRouter = Router();
+
+protectedRouter.get('/dashboard', (Request request) async {
+  final user = request.context['user'] as User;
+  
+  return serveApp((request, render) {
+    return render(
+      Document(
+        body: Dashboard(user: user),
+      ),
+    );
+  })(request);
+});
+
+// Apply middleware
+final handler = const Pipeline()
+  .addMiddleware(authMiddleware())
+  .addHandler(protectedRouter.call);
+```
+
+## Best Practices
+
+<Steps>
+  <Step title="Separate concerns">
+    Keep backend logic in your framework's handlers, use Jaspr only for rendering UI.
+  </Step>
+  
+  <Step title="Initialize Jaspr once">
+    Call `Jaspr.initializeApp()` once at application startup, not in every handler.
+  </Step>
+  
+  <Step title="Handle asset paths">
+    Set the `base` parameter correctly when mounting on non-root paths.
+  </Step>
+  
+  <Step title="Use middleware">
+    Leverage your framework's middleware for cross-cutting concerns like logging and auth.
+  </Step>
+  
+  <Step title="Cache rendered output">
+    For static content, cache rendered HTML to improve performance.
+  </Step>
+</Steps>
+
+## Example: Full Shelf Integration
+
+```dart
+import 'dart:io';
+import 'package:jaspr/server.dart';
+import 'package:shelf/shelf.dart';
+import 'package:shelf/shelf_io.dart' as shelf_io;
+import 'package:shelf_router/shelf_router.dart';
+import 'package:shelf_static/shelf_static.dart';
+
+void main() async {
+  Jaspr.initializeApp();
+  
+  final app = Router();
+  
+  // API routes
+  final api = Router()
+    ..get('/users', _getUsers)
+    ..get('/users/<id>', _getUser)
+    ..post('/users', _createUser);
+  
+  app.mount('/api', api);
+  
+  // Static files
+  app.mount('/static', createStaticHandler('public'));
+  
+  // Jaspr web assets
+  app.mount('/web', createStaticHandler('build/jaspr/web'));
+  
+  // Jaspr app
+  app.mount('/', serveApp((request, render) {
+    return render(Document(body: App()));
+  }));
+  
+  // Middleware pipeline
+  final handler = Pipeline()
+    .addMiddleware(logRequests())
+    .addMiddleware(corsHeaders())
+    .addHandler(app.call);
+  
+  // Start server
+  final server = await shelf_io.serve(
+    handler,
+    'localhost',
+    8080,
+  );
+  
+  server.autoCompress = true;
+  print('Server running on http://localhost:8080');
+}
+
+Middleware corsHeaders() {
+  return (handler) => (request) async {
+    final response = await handler(request);
+    return response.change(headers: {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE',
+    });
+  };
+}
+```
+
+This integration approach gives you full control over your backend architecture while leveraging Jaspr's powerful component rendering system.

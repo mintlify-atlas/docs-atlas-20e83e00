@@ -1,0 +1,393 @@
+---
+title: HTML & DOM
+description: Learn how to write HTML using DomComponent and built-in element helpers
+---
+
+Jaspr provides multiple ways to render HTML elements in your application. At the core is the `DomComponent` class, along with convenient helper functions for every HTML element.
+
+## Creating HTML Elements
+
+### Using Component.element()
+
+The most explicit way to create an HTML element is using `Component.element()`:
+
+```dart
+import 'package:jaspr/jaspr.dart';
+
+Component.element(
+  tag: 'div',
+  id: 'container',
+  classes: 'card elevated',
+  styles: Styles(
+    backgroundColor: Colors.white,
+    padding: Padding.all(16.px),
+  ),
+  attributes: {
+    'data-id': '123',
+  },
+  events: {
+    'click': (event) => print('Clicked!'),
+  },
+  children: [
+    Component.text('Hello World'),
+  ],
+);
+```
+
+**Parameters:**
+- `tag` - The HTML tag name (required)
+- `id` - The element's id attribute
+- `classes` - Space-separated CSS class names
+- `styles` - A `Styles` object for inline styles
+- `attributes` - Additional HTML attributes
+- `events` - Event handlers
+- `children` - Child components
+- `key` - Component key for reconciliation
+
+### Using HTML Helper Functions
+
+Jaspr provides helper functions for all standard HTML elements:
+
+```dart
+import 'package:jaspr/dom.dart';
+
+div(
+  id: 'container',
+  classes: 'card',
+  [
+    h1([text('Welcome')]),
+    p([text('This is a paragraph.')]),
+    button(
+      events: {'click': (e) => print('Clicked')},
+      [text('Click me')],
+    ),
+  ],
+);
+```
+
+<Tip>
+Import `package:jaspr/dom.dart` to get access to all HTML element helpers like `div`, `span`, `button`, etc.
+</Tip>
+
+## Text Content
+
+### Plain Text
+
+Create text nodes using `Component.text()` or the `text()` helper:
+
+```dart
+// Using Component.text()
+Component.text('Hello World')
+
+// Using helper (from jaspr/dom.dart)
+text('Hello World')
+```
+
+### Raw HTML
+
+For rendering unescaped HTML, use `RawText`:
+
+```dart
+import 'package:jaspr/dom.dart';
+
+RawText('<strong>Bold</strong> text')
+```
+
+<Warning>
+`RawText` does not escape any input and is vulnerable to XSS attacks. Always sanitize user input before using this component.
+</Warning>
+
+## Fragments
+
+Render multiple elements without a wrapper using fragments:
+
+```dart
+Component.fragment([
+  h1([text('Title')]),
+  p([text('Paragraph 1')]),
+  p([text('Paragraph 2')]),
+])
+```
+
+This renders:
+```html
+<h1>Title</h1>
+<p>Paragraph 1</p>
+<p>Paragraph 2</p>
+```
+
+Without a wrapping `<div>` or other container element.
+
+## Wrapping Elements
+
+Apply properties to child elements without creating an extra DOM node:
+
+```dart
+Component.wrapElement(
+  classes: 'wrapper-class',
+  styles: Styles(
+    backgroundColor: Colors.blue,
+    padding: Padding.all(8.px),
+  ),
+  child: div(
+    classes: 'inner-class',
+    styles: Styles(backgroundColor: Colors.red),
+    [text('Content')],
+  ),
+)
+```
+
+This renders:
+```html
+<div class="wrapper-class inner-class" style="padding: 8px; background-color: red;">
+  Content
+</div>
+```
+
+The wrapper's properties are merged with the child's, with the child's properties taking precedence for conflicts.
+
+## Common HTML Elements
+
+### Text Elements
+
+```dart
+h1([text('Heading 1')])
+h2([text('Heading 2')])
+h3([text('Heading 3')])
+p([text('Paragraph')])
+span([text('Inline text')])
+strong([text('Bold text')])
+em([text('Italic text')])
+```
+
+### Layout Elements
+
+```dart
+div([/* children */])
+section([/* children */])
+article([/* children */])
+header([/* children */])
+footer([/* children */])
+nav([/* children */])
+main([/* children */])
+aside([/* children */])
+```
+
+### Lists
+
+```dart
+ul([
+  li([text('Item 1')]),
+  li([text('Item 2')]),
+  li([text('Item 3')]),
+])
+
+ol([
+  li([text('First')]),
+  li([text('Second')]),
+])
+```
+
+### Links and Navigation
+
+```dart
+a(
+  href: '/about',
+  target: Target.blank,
+  [text('About Us')],
+)
+```
+
+<Tip>
+For client-side routing without page reloads, use the `Link` component from `jaspr_router`.
+</Tip>
+
+### Images and Media
+
+```dart
+img(
+  src: '/images/logo.png',
+  alt: 'Company Logo',
+  width: 200,
+  height: 100,
+)
+
+video(
+  src: '/videos/intro.mp4',
+  controls: true,
+  autoplay: false,
+  [],
+)
+
+audio(
+  src: '/audio/podcast.mp3',
+  controls: true,
+  [],
+)
+```
+
+### Forms
+
+```dart
+form([
+  input(
+    type: InputType.text,
+    name: 'username',
+    placeholder: 'Enter username',
+  ),
+  input(
+    type: InputType.password,
+    name: 'password',
+  ),
+  button(
+    type: ButtonType.submit,
+    [text('Submit')],
+  ),
+])
+```
+
+### Tables
+
+```dart
+table([
+  thead([
+    tr([
+      th([text('Name')]),
+      th([text('Age')]),
+    ]),
+  ]),
+  tbody([
+    tr([
+      td([text('Alice')]),
+      td([text('25')]),
+    ]),
+    tr([
+      td([text('Bob')]),
+      td([text('30')]),
+    ]),
+  ]),
+])
+```
+
+## Event Handling
+
+Attach event listeners to elements using the `events` parameter:
+
+```dart
+button(
+  events: {
+    'click': (event) {
+      print('Button clicked');
+      event.preventDefault();
+    },
+    'mouseover': (event) {
+      print('Mouse over button');
+    },
+  },
+  [text('Interactive Button')],
+)
+```
+
+**Common events:**
+- `click` - Mouse click
+- `submit` - Form submission
+- `change` - Input value changed
+- `input` - Input value changing
+- `focus` / `blur` - Focus events
+- `keydown` / `keyup` - Keyboard events
+- `mouseover` / `mouseout` - Mouse hover
+
+## Attributes
+
+Set custom HTML attributes:
+
+```dart
+div(
+  attributes: {
+    'data-user-id': '123',
+    'aria-label': 'Main content',
+    'role': 'main',
+  },
+  [/* children */],
+)
+```
+
+## Empty Components
+
+Render nothing (useful for conditional rendering):
+
+```dart
+Component.empty()
+```
+
+## Complete Example
+
+```dart
+import 'package:jaspr/jaspr.dart';
+import 'package:jaspr/dom.dart';
+
+class UserCard extends StatelessComponent {
+  const UserCard({
+    required this.name,
+    required this.email,
+    required this.avatarUrl,
+    super.key,
+  });
+
+  final String name;
+  final String email;
+  final String avatarUrl;
+
+  @override
+  Component build(BuildContext context) {
+    return article(
+      classes: 'user-card',
+      styles: Styles(
+        display: Display.flex,
+        gap: Gap.all(16.px),
+        padding: Padding.all(20.px),
+        border: Border.all(
+          BorderSide(color: Colors.grey, width: 1.px),
+        ),
+        radius: BorderRadius.all(Radius.circular(8.px)),
+      ),
+      [
+        img(
+          src: avatarUrl,
+          alt: name,
+          width: 64,
+          height: 64,
+          styles: Styles(
+            radius: BorderRadius.all(Radius.circular(32.px)),
+          ),
+        ),
+        div([
+          h3([text(name)]),
+          p(
+            styles: Styles(color: Colors.grey600),
+            [text(email)],
+          ),
+          a(
+            href: 'mailto:$email',
+            [text('Send email')],
+          ),
+        ]),
+      ],
+    );
+  }
+}
+```
+
+## Related
+
+<CardGroup cols={2}>
+  <Card title="Components" icon="puzzle-piece" href="/concepts/components">
+    Learn about the component system
+  </Card>
+  <Card title="Styling" icon="paintbrush" href="/concepts/styling">
+    Style your HTML elements
+  </Card>
+  <Card title="Forms" icon="input-text" href="/features/forms">
+    Build interactive forms
+  </Card>
+</CardGroup>

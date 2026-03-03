@@ -1,0 +1,508 @@
+---
+title: SEO & Meta Tags
+description: Learn how to optimize your Jaspr application for search engines
+---
+
+Jaspr provides powerful tools for managing SEO and meta tags in your application. The `Document` API allows you to set page titles, meta tags, and other head elements both during server-side rendering and on the client.
+
+## Document Component
+
+The `Document` component is the foundation for managing your app's HTML structure and metadata:
+
+```dart
+import 'package:jaspr/jaspr.dart';
+
+class App extends StatelessComponent {
+  @override
+  Component build(BuildContext context) {
+    return Document(
+      title: 'My Jaspr App',
+      lang: 'en',
+      charset: 'utf-8',
+      viewport: 'width=device-width, initial-scale=1.0',
+      meta: {
+        'description': 'A fast and modern web framework for Dart',
+        'keywords': 'dart, web, framework, jaspr',
+        'author': 'Your Name',
+      },
+      body: MyApp(),
+    );
+  }
+}
+```
+
+**Document properties:**
+- `title` - Page title (sets `<title>` tag)
+- `lang` - Language attribute on `<html>` element
+- `base` - Base URL for relative links
+- `charset` - Character encoding (default: 'utf-8')
+- `viewport` - Viewport meta tag
+- `meta` - Additional meta tags
+- `styles` - Global CSS style rules
+- `head` - Additional components in `<head>`
+- `body` - The main app component
+
+## Dynamic Meta Tags
+
+Use `Document.head()` anywhere in your component tree to set metadata:
+
+```dart
+class BlogPost extends StatelessComponent {
+  const BlogPost({
+    required this.title,
+    required this.description,
+    required this.author,
+    super.key,
+  });
+  
+  final String title;
+  final String description;
+  final String author;
+
+  @override
+  Component build(BuildContext context) {
+    return div([
+      // Set page-specific metadata
+      Document.head(
+        title: title,
+        meta: {
+          'description': description,
+          'author': author,
+          'og:title': title,
+          'og:description': description,
+          'og:type': 'article',
+          'twitter:card': 'summary_large_image',
+          'twitter:title': title,
+          'twitter:description': description,
+        },
+      ),
+      
+      // Page content
+      article([
+        h1([text(title)]),
+        p([text(description)]),
+      ]),
+    ]);
+  }
+}
+```
+
+<Tip>
+`Document.head()` can be used multiple times in nested components. Deeper or later mounted components will override duplicate elements.
+</Tip>
+
+## Meta Tag Override Rules
+
+Meta tags are merged using the following system:
+
+- Elements with an `id` override other elements with the same `id`
+- `<title>` elements override other `<title>` elements
+- `<base>` elements override other `<base>` elements
+- `<meta>` elements override other `<meta>` elements with the same `name`
+
+```dart
+// Parent component
+Document.head(
+  title: 'My App',
+  meta: {
+    'description': 'Default description',
+    'keywords': 'app, web',
+  },
+)
+
+// Child component (overrides title and description)
+Document.head(
+  title: 'Specific Page - My App',
+  meta: {
+    'description': 'Specific page description',
+  },
+)
+
+// Result:
+// <title>Specific Page - My App</title>
+// <meta name="description" content="Specific page description">
+// <meta name="keywords" content="app, web">
+```
+
+## Open Graph Tags
+
+Optimize for social media sharing:
+
+```dart
+Document.head(
+  title: 'Amazing Article',
+  meta: {
+    // Open Graph
+    'og:title': 'Amazing Article',
+    'og:description': 'This article will blow your mind',
+    'og:image': 'https://example.com/image.jpg',
+    'og:url': 'https://example.com/article',
+    'og:type': 'article',
+    'og:site_name': 'My Blog',
+    
+    // Article-specific
+    'article:author': 'Jane Doe',
+    'article:published_time': '2024-03-01T12:00:00Z',
+    'article:section': 'Technology',
+  },
+)
+```
+
+## Twitter Card Tags
+
+Optimize for Twitter:
+
+```dart
+Document.head(
+  meta: {
+    'twitter:card': 'summary_large_image',
+    'twitter:site': '@yourhandle',
+    'twitter:creator': '@authorhandle',
+    'twitter:title': 'Article Title',
+    'twitter:description': 'Article description',
+    'twitter:image': 'https://example.com/image.jpg',
+  },
+)
+```
+
+**Twitter card types:**
+- `summary` - Default card
+- `summary_large_image` - Large image card
+- `app` - App installation card
+- `player` - Video/audio player card
+
+## Canonical URLs
+
+Set canonical URLs to avoid duplicate content penalties:
+
+```dart
+Document.head(
+  children: [
+    Component.element(
+      tag: 'link',
+      attributes: {
+        'rel': 'canonical',
+        'href': 'https://example.com/canonical-url',
+      },
+    ),
+  ],
+)
+```
+
+## Structured Data (JSON-LD)
+
+Add structured data for rich search results:
+
+```dart
+import 'dart:convert';
+
+Document.head(
+  children: [
+    Component.element(
+      tag: 'script',
+      attributes: {'type': 'application/ld+json'},
+      children: [
+        RawText(jsonEncode({
+          '@context': 'https://schema.org',
+          '@type': 'Article',
+          'headline': 'Article Title',
+          'author': {
+            '@type': 'Person',
+            'name': 'Jane Doe',
+          },
+          'datePublished': '2024-03-01',
+          'description': 'Article description',
+          'image': 'https://example.com/image.jpg',
+        })),
+      ],
+    ),
+  ],
+)
+```
+
+## Favicon and Icons
+
+Add favicons and app icons:
+
+```dart
+Document.head(
+  children: [
+    // Favicon
+    Component.element(
+      tag: 'link',
+      attributes: {
+        'rel': 'icon',
+        'type': 'image/x-icon',
+        'href': '/favicon.ico',
+      },
+    ),
+    
+    // Apple Touch Icon
+    Component.element(
+      tag: 'link',
+      attributes: {
+        'rel': 'apple-touch-icon',
+        'sizes': '180x180',
+        'href': '/apple-touch-icon.png',
+      },
+    ),
+    
+    // Web App Manifest
+    Component.element(
+      tag: 'link',
+      attributes: {
+        'rel': 'manifest',
+        'href': '/site.webmanifest',
+      },
+    ),
+  ],
+)
+```
+
+## HTML and Body Attributes
+
+Set attributes on `<html>` and `<body>` elements:
+
+```dart
+// HTML attributes
+Document.html(
+  attributes: {
+    'lang': 'en',
+    'dir': 'ltr',
+  },
+)
+
+// Body attributes
+Document.body(
+  attributes: {
+    'class': 'dark-theme',
+    'data-theme': 'dark',
+  },
+)
+```
+
+## Route-Specific SEO
+
+Combine with routing for page-specific SEO:
+
+```dart
+import 'package:jaspr_router/jaspr_router.dart';
+
+Router(
+  routes: [
+    Route(
+      path: '/',
+      title: 'Home - My App',
+      builder: (context, state) => HomePage(),
+    ),
+    Route(
+      path: '/blog/:slug',
+      builder: (context, state) {
+        final slug = state.pathParameters['slug']!;
+        return BlogPostPage(slug: slug);
+      },
+    ),
+  ],
+)
+
+class BlogPostPage extends StatefulComponent {
+  const BlogPostPage({required this.slug, super.key});
+  
+  final String slug;
+
+  @override
+  State<BlogPostPage> createState() => _BlogPostPageState();
+}
+
+class _BlogPostPageState extends State<BlogPostPage> 
+    with PreloadStateMixin<BlogPostPage> {
+  
+  BlogPost? post;
+  
+  @override
+  Future<void> preloadState() async {
+    post = await fetchBlogPost(widget.slug);
+  }
+  
+  @override
+  Component build(BuildContext context) {
+    if (post == null) return LoadingSpinner();
+    
+    return div([
+      Document.head(
+        title: '${post!.title} - My Blog',
+        meta: {
+          'description': post!.excerpt,
+          'og:title': post!.title,
+          'og:description': post!.excerpt,
+          'og:image': post!.imageUrl,
+        },
+      ),
+      
+      // Content...
+    ]);
+  }
+}
+```
+
+## Robots Meta Tag
+
+Control search engine crawling:
+
+```dart
+Document.head(
+  meta: {
+    // Allow indexing and following links
+    'robots': 'index, follow',
+    
+    // Prevent indexing
+    // 'robots': 'noindex, nofollow',
+    
+    // Specific bot control
+    'googlebot': 'index, follow',
+  },
+)
+```
+
+## Complete SEO Example
+
+```dart
+import 'package:jaspr/jaspr.dart';
+
+class SEOOptimizedPage extends StatelessComponent {
+  const SEOOptimizedPage({
+    required this.title,
+    required this.description,
+    required this.imageUrl,
+    required this.url,
+    required this.publishedDate,
+    required this.author,
+    super.key,
+  });
+  
+  final String title;
+  final String description;
+  final String imageUrl;
+  final String url;
+  final DateTime publishedDate;
+  final String author;
+
+  @override
+  Component build(BuildContext context) {
+    return div([
+      Document.head(
+        title: '$title - My Blog',
+        meta: {
+          // Basic meta tags
+          'description': description,
+          'author': author,
+          
+          // Open Graph
+          'og:title': title,
+          'og:description': description,
+          'og:image': imageUrl,
+          'og:url': url,
+          'og:type': 'article',
+          'og:site_name': 'My Blog',
+          'article:published_time': publishedDate.toIso8601String(),
+          'article:author': author,
+          
+          // Twitter
+          'twitter:card': 'summary_large_image',
+          'twitter:title': title,
+          'twitter:description': description,
+          'twitter:image': imageUrl,
+          
+          // SEO
+          'robots': 'index, follow',
+        },
+        children: [
+          // Canonical URL
+          Component.element(
+            tag: 'link',
+            attributes: {'rel': 'canonical', 'href': url},
+          ),
+          
+          // Structured data
+          Component.element(
+            tag: 'script',
+            attributes: {'type': 'application/ld+json'},
+            children: [
+              RawText(jsonEncode({
+                '@context': 'https://schema.org',
+                '@type': 'Article',
+                'headline': title,
+                'description': description,
+                'image': imageUrl,
+                'datePublished': publishedDate.toIso8601String(),
+                'author': {
+                  '@type': 'Person',
+                  'name': author,
+                },
+              })),
+            ],
+          ),
+        ],
+      ),
+      
+      // Page content
+      article([
+        h1([text(title)]),
+        p([text(description)]),
+      ]),
+    ]);
+  }
+}
+```
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Unique titles and descriptions">
+    Each page should have a unique title and meta description:
+    - Title: 50-60 characters
+    - Description: 150-160 characters
+  </Accordion>
+
+  <Accordion title="Use PreloadStateMixin for dynamic content">
+    Fetch SEO-critical data during SSR:
+
+    ```dart
+    class _MyPageState extends State<MyPage> 
+        with PreloadStateMixin<MyPage> {
+      @override
+      Future<void> preloadState() async {
+        // Fetch data for meta tags
+      }
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="Include Open Graph images">
+    Always provide og:image for better social sharing:
+    - Recommended size: 1200x630 pixels
+    - Format: JPG or PNG
+    - Size: < 5MB
+  </Accordion>
+
+  <Accordion title="Test with validation tools">
+    Validate your meta tags:
+    - [Facebook Sharing Debugger](https://developers.facebook.com/tools/debug/)
+    - [Twitter Card Validator](https://cards-dev.twitter.com/validator)
+    - [Google Rich Results Test](https://search.google.com/test/rich-results)
+  </Accordion>
+</AccordionGroup>
+
+## Related
+
+<CardGroup cols={2}>
+  <Card title="Routing" icon="route" href="/concepts/routing">
+    Set page titles in routes
+  </Card>
+  <Card title="Data Fetching" icon="database" href="/concepts/data-fetching">
+    Preload data for SEO
+  </Card>
+  <Card title="Server Rendering" icon="server" href="/features/server-rendering">
+    Enable SSR for better SEO
+  </Card>
+</CardGroup>

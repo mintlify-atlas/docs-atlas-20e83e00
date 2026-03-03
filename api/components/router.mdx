@@ -1,0 +1,506 @@
+---
+title: Router
+description: API reference for Router component from jaspr_router
+---
+
+## Overview
+
+The `Router` component from the `jaspr_router` package provides declarative routing for Jaspr applications with support for nested routes, lazy loading, redirects, and named routes.
+
+## Installation
+
+```yaml
+dependencies:
+  jaspr_router: ^latest_version
+```
+
+## Router Component
+
+### Constructor
+
+```dart
+Router({
+  required List<RouteBase> routes,
+  RouterComponentBuilder? errorBuilder,
+  RouterRedirect? redirect,
+  int redirectLimit = 5,
+  Key? key,
+})
+```
+
+<ParamField path="routes" type="List<RouteBase>" required>
+  The list of routes for the application. Each route defines a path and corresponding builder.
+</ParamField>
+
+<ParamField path="errorBuilder" type="RouterComponentBuilder?">
+  Optional builder for rendering error pages when routes fail or are not found.
+</ParamField>
+
+<ParamField path="redirect" type="RouterRedirect?">
+  Optional top-level redirect function that can redirect to different routes based on the current route and state.
+</ParamField>
+
+<ParamField path="redirectLimit" type="int" default="5">
+  Maximum number of redirects allowed to prevent infinite redirect loops.
+</ParamField>
+
+<ParamField path="key" type="Key?">
+  An optional key for the component.
+</ParamField>
+
+### Static Methods
+
+#### of
+
+```dart
+static RouterState of(BuildContext context)
+```
+
+Retrieves the `RouterState` from the current context.
+
+<ParamField path="context" type="BuildContext">
+  The build context.
+</ParamField>
+
+<ResponseField name="return" type="RouterState">
+  The router state instance.
+</ResponseField>
+
+#### maybeOf
+
+```dart
+static RouterState? maybeOf(BuildContext context)
+```
+
+Retrieves the `RouterState` from the current context, or returns `null` if not found.
+
+<ParamField path="context" type="BuildContext">
+  The build context.
+</ParamField>
+
+<ResponseField name="return" type="RouterState?">
+  The router state instance, or `null`.
+</ResponseField>
+
+## RouterState
+
+The state object for `Router` that provides navigation methods.
+
+### Navigation Methods
+
+#### push
+
+```dart
+Future<void> push(String location, {Object? extra})
+```
+
+Pushes a new route onto the history stack.
+
+<ParamField path="location" type="String">
+  The URL path to navigate to.
+</ParamField>
+
+<ParamField path="extra" type="Object?">
+  Additional data to provide with navigation. Must be a primitive serializable value as it goes through serialization when stored in the browser.
+</ParamField>
+
+**Example:**
+
+```dart
+Router.of(context).push('/users/123');
+Router.of(context).push('/profile', extra: {'userId': '123'});
+```
+
+#### pushNamed
+
+```dart
+Future<void> pushNamed(
+  String name, {
+  Map<String, String> params = const {},
+  Map<String, dynamic> queryParams = const {},
+  Object? extra,
+})
+```
+
+Pushes a named route onto the history stack.
+
+<ParamField path="name" type="String">
+  The name of the route to navigate to.
+</ParamField>
+
+<ParamField path="params" type="Map<String, String>" default="{}">
+  Path parameters for the route (e.g., `{'userId': '123'}`).
+</ParamField>
+
+<ParamField path="queryParams" type="Map<String, dynamic>" default="{}">
+  Query parameters for the route.
+</ParamField>
+
+<ParamField path="extra" type="Object?">
+  Additional data to provide with navigation.
+</ParamField>
+
+**Example:**
+
+```dart
+Router.of(context).pushNamed(
+  'user-profile',
+  params: {'userId': '123'},
+  queryParams: {'tab': 'posts'},
+);
+```
+
+#### replace
+
+```dart
+Future<void> replace(String location, {Object? extra})
+```
+
+Replaces the current history entry with a new route.
+
+<ParamField path="location" type="String">
+  The URL path to navigate to.
+</ParamField>
+
+<ParamField path="extra" type="Object?">
+  Additional data to provide with navigation.
+</ParamField>
+
+**Example:**
+
+```dart
+Router.of(context).replace('/home');
+```
+
+#### replaceNamed
+
+```dart
+Future<void> replaceNamed(
+  String name, {
+  Map<String, String> params = const {},
+  Map<String, dynamic> queryParams = const {},
+  Object? extra,
+})
+```
+
+Replaces the current history entry with a named route.
+
+#### back
+
+```dart
+void back()
+```
+
+Triggers the browser's back navigation.
+
+**Example:**
+
+```dart
+Router.of(context).back();
+```
+
+#### preload
+
+```dart
+Future<void> preload(String location)
+```
+
+Preloads the route for faster navigation. Works with lazy routes.
+
+<ParamField path="location" type="String">
+  The URL path to preload.
+</ParamField>
+
+**Example:**
+
+```dart
+Router.of(context).preload('/dashboard');
+```
+
+#### namedLocation
+
+```dart
+String namedLocation(
+  String name, {
+  Map<String, String> params = const {},
+  Map<String, dynamic> queryParams = const {},
+})
+```
+
+Get a location string from a route name and parameters. Useful for redirecting to a named location.
+
+<ParamField path="name" type="String">
+  The name of the route.
+</ParamField>
+
+<ParamField path="params" type="Map<String, String>" default="{}">
+  Path parameters.
+</ParamField>
+
+<ParamField path="queryParams" type="Map<String, dynamic>" default="{}">
+  Query parameters.
+</ParamField>
+
+<ResponseField name="return" type="String">
+  The constructed URL path.
+</ResponseField>
+
+**Example:**
+
+```dart
+final location = Router.of(context).namedLocation(
+  'user-profile',
+  params: {'userId': '123'},
+);
+// Returns: '/users/123'
+```
+
+## Example Usage
+
+### Basic Router Setup
+
+```dart
+import 'package:jaspr/jaspr.dart';
+import 'package:jaspr_router/jaspr_router.dart';
+
+class App extends StatelessComponent {
+  @override
+  Component build(BuildContext context) {
+    return Router(
+      routes: [
+        Route(
+          path: '/',
+          builder: (context, state) => HomePage(),
+        ),
+        Route(
+          path: '/about',
+          builder: (context, state) => AboutPage(),
+        ),
+        Route(
+          path: '/users/:id',
+          builder: (context, state) {
+            final userId = state.params['id']!;
+            return UserPage(userId: userId);
+          },
+        ),
+      ],
+    );
+  }
+}
+```
+
+### Nested Routes
+
+```dart
+Router(
+  routes: [
+    ShellRoute(
+      builder: (context, state, child) {
+        return Layout(child: child);
+      },
+      routes: [
+        Route(
+          path: '/',
+          builder: (context, state) => HomePage(),
+        ),
+        Route(
+          path: '/dashboard',
+          builder: (context, state) => DashboardPage(),
+        ),
+      ],
+    ),
+  ],
+)
+```
+
+### Named Routes
+
+```dart
+Router(
+  routes: [
+    Route(
+      path: '/',
+      name: 'home',
+      builder: (context, state) => HomePage(),
+    ),
+    Route(
+      path: '/users/:userId',
+      name: 'user-profile',
+      builder: (context, state) {
+        return UserProfile(userId: state.params['userId']!);
+      },
+    ),
+  ],
+)
+
+// Navigate using name
+Router.of(context).pushNamed(
+  'user-profile',
+  params: {'userId': '123'},
+);
+```
+
+### Lazy Routes
+
+```dart
+Router(
+  routes: [
+    Route(
+      path: '/',
+      builder: (context, state) => HomePage(),
+    ),
+    LazyRoute(
+      path: '/dashboard',
+      load: () async {
+        // Load route code asynchronously
+        await Future.delayed(Duration(seconds: 1));
+      },
+      builder: (context, state) => DashboardPage(),
+    ),
+  ],
+)
+```
+
+### Redirects
+
+```dart
+Router(
+  redirect: (context, state) {
+    final isLoggedIn = checkAuth();
+    final isAuthRoute = state.uri.path.startsWith('/auth');
+    
+    if (!isLoggedIn && !isAuthRoute) {
+      return '/auth/login';
+    }
+    if (isLoggedIn && isAuthRoute) {
+      return '/';
+    }
+    return null; // No redirect
+  },
+  routes: [
+    Route(
+      path: '/',
+      builder: (context, state) => HomePage(),
+    ),
+    Route(
+      path: '/auth/login',
+      builder: (context, state) => LoginPage(),
+    ),
+  ],
+)
+```
+
+### Error Handling
+
+```dart
+Router(
+  errorBuilder: (context, state) {
+    return div([
+      h1([text('404 - Page Not Found')]),
+      p([text('The page "${state.uri.path}" does not exist.')]),
+      Link(to: '/', child: text('Go Home')),
+    ]);
+  },
+  routes: [
+    // ... routes
+  ],
+)
+```
+
+### Accessing Router in Components
+
+```dart
+class NavigationMenu extends StatelessComponent {
+  @override
+  Component build(BuildContext context) {
+    final router = Router.of(context);
+    
+    return nav([
+      button(
+        events: {'click': (_) => router.push('/')},
+        [text('Home')],
+      ),
+      button(
+        events: {'click': (_) => router.push('/about')},
+        [text('About')],
+      ),
+      button(
+        events: {'click': (_) => router.back()},
+        [text('Back')],
+      ),
+    ]);
+  }
+}
+```
+
+### Query Parameters
+
+```dart
+Route(
+  path: '/search',
+  builder: (context, state) {
+    final query = state.uri.queryParameters['q'] ?? '';
+    final page = int.tryParse(
+      state.uri.queryParameters['page'] ?? '1'
+    ) ?? 1;
+    
+    return SearchPage(query: query, page: page);
+  },
+)
+
+// Navigate with query params
+Router.of(context).push('/search?q=jaspr&page=2');
+
+// Or using pushNamed
+Router.of(context).pushNamed(
+  'search',
+  queryParams: {'q': 'jaspr', 'page': '2'},
+);
+```
+
+## Type Definitions
+
+### RouterComponentBuilder
+
+```dart
+typedef RouterComponentBuilder = Component Function(
+  BuildContext context,
+  RouteState state,
+)
+```
+
+### RouterRedirect
+
+```dart
+typedef RouterRedirect = String? Function(
+  BuildContext context,
+  RouteState state,
+)
+```
+
+Return a path string to redirect, or `null` for no redirect.
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Use named routes for large apps">
+    Named routes make it easier to refactor paths without breaking navigation code.
+  </Accordion>
+
+  <Accordion title="Implement error handling">
+    Always provide an `errorBuilder` to handle 404s and other routing errors gracefully.
+  </Accordion>
+
+  <Accordion title="Preload routes on hover">
+    Use the `Link` component which automatically preloads routes on hover for better UX.
+  </Accordion>
+
+  <Accordion title="Lazy load heavy routes">
+    Use `LazyRoute` for pages with large dependencies to improve initial load time.
+  </Accordion>
+</AccordionGroup>
+
+## Related Components
+
+- [Link](/api/components/link) - Component for client-side navigation
+- [StatefulComponent](/api/components/stateful) - For components with state

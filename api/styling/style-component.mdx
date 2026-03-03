@@ -1,0 +1,386 @@
+---
+title: Style Component
+description: Render CSS style rules as a component with <style> element
+---
+
+The `Style` component renders a list of style rules into CSS and wraps them in a `<style>` element. This is useful for component-scoped styles or dynamic style injection.
+
+## Constructor
+
+```dart
+const Style({
+  required List<StyleRule> styles,
+  Key? key,
+})
+```
+
+<ParamField path="styles" type="List<StyleRule>" required>
+  List of style rules to render. Use the `css()` utility to create rules.
+</ParamField>
+
+<ParamField path="key" type="Key?">
+  Optional component key.
+</ParamField>
+
+## Basic Usage
+
+```dart
+import 'package:jaspr/jaspr.dart';
+
+class MyComponent extends StatelessComponent {
+  @override
+  Component build(BuildContext context) {
+    return div([
+      // Inject scoped styles
+      Style(styles: [
+        css('.my-class').styles(
+          color: Colors.blue,
+          fontSize: 18.px,
+        ),
+      ]),
+      
+      // Use the styles
+      div(
+        [Component.text('Styled content')],
+        classes: 'my-class',
+      ),
+    ]);
+  }
+}
+```
+
+Renders:
+```html
+<div>
+  <style>
+    .my-class {
+      color: blue;
+      font-size: 18px;
+    }
+  </style>
+  <div class="my-class">Styled content</div>
+</div>
+```
+
+## Creating Style Rules
+
+Use the `css()` utility to create style rules:
+
+```dart
+Style(styles: [
+  css('.button').styles(
+    padding: Padding.symmetric(horizontal: 16.px, vertical: 8.px),
+    backgroundColor: Colors.blue,
+    color: Colors.white,
+  ),
+])
+```
+
+## Component-Scoped Styles
+
+Define styles within a component for encapsulation:
+
+```dart
+class Card extends StatelessComponent {
+  const Card({
+    required this.title,
+    required this.content,
+    super.key,
+  });
+
+  final String title;
+  final String content;
+
+  @override
+  Component build(BuildContext context) {
+    return div([
+      Style(styles: [
+        css('.card').styles(
+          padding: Padding.all(24.px),
+          border: Border.all(BorderSide(color: Colors.grey, width: 1.px)),
+          radius: BorderRadius.all(Radius.circular(8.px)),
+        ),
+        css('.card-title').styles(
+          fontSize: 20.px,
+          fontWeight: FontWeight.bold,
+          margin: Margin.only(bottom: 12.px),
+        ),
+        css('.card-content').styles(
+          color: Colors.grey.shade700,
+        ),
+      ]),
+      
+      div([
+        div([Component.text(title)], classes: 'card-title'),
+        div([Component.text(content)], classes: 'card-content'),
+      ], classes: 'card'),
+    ]);
+  }
+}
+```
+
+## Nested Rules & Pseudo-Classes
+
+```dart
+Style(styles: [
+  css('.button', [
+    css('&').styles(
+      backgroundColor: Colors.blue,
+      color: Colors.white,
+      border: Border.none(),
+    ),
+    css('&:hover').styles(
+      backgroundColor: Colors.blue.shade700,
+    ),
+    css('&:active').styles(
+      backgroundColor: Colors.blue.shade800,
+    ),
+    css('& > .icon').styles(
+      marginRight: 8.px,
+    ),
+  ]),
+])
+```
+
+## Media Queries
+
+```dart
+Style(styles: [
+  css('.container').styles(
+    padding: Padding.all(16.px),
+  ),
+  
+  css.media(MediaQuery.screen(minWidth: 768.px), [
+    css('.container').styles(
+      padding: Padding.all(32.px),
+      maxWidth: 720.px,
+    ),
+  ]),
+])
+```
+
+## Dynamic Styles
+
+Generate styles based on component state:
+
+```dart
+class ThemedButton extends StatelessComponent {
+  const ThemedButton({
+    required this.color,
+    required this.text,
+    super.key,
+  });
+
+  final Color color;
+  final String text;
+
+  @override
+  Component build(BuildContext context) {
+    return div([
+      Style(styles: [
+        css('.themed-btn').styles(
+          backgroundColor: color,
+          color: Colors.white,
+          padding: Padding.symmetric(horizontal: 16.px, vertical: 8.px),
+        ),
+        css('.themed-btn:hover').styles(
+          backgroundColor: color.withAlpha(0.8),
+        ),
+      ]),
+      
+      button(
+        [Component.text(text)],
+        classes: 'themed-btn',
+      ),
+    ]);
+  }
+}
+```
+
+## Keyframe Animations
+
+```dart
+Style(styles: [
+  css.keyframes('fadeIn', {
+    '0%': Styles(opacity: 0, transform: Transform.translateY(20.px)),
+    '100%': Styles(opacity: 1, transform: Transform.translateY(0.px)),
+  }),
+  
+  css('.animate-in').styles(
+    animation: Animation(
+      name: 'fadeIn',
+      duration: Duration(milliseconds: 300),
+      timingFunction: TimingFunction.easeOut,
+    ),
+  ),
+])
+```
+
+## Font Face Declarations
+
+```dart
+Style(styles: [
+  css.fontFace(
+    family: 'CustomFont',
+    url: '/fonts/custom-font.woff2',
+  ),
+  
+  css('body').styles(
+    fontFamily: FontFamily('CustomFont, sans-serif'),
+  ),
+])
+```
+
+## Import External Stylesheets
+
+```dart
+Style(styles: [
+  css.import('https://fonts.googleapis.com/css2?family=Roboto'),
+  css.import('/styles/animations.css'),
+])
+```
+
+## Multiple Style Components
+
+You can use multiple `Style` components in different parts of your app:
+
+```dart
+class App extends StatelessComponent {
+  @override
+  Component build(BuildContext context) {
+    return div([
+      // Global styles
+      Style(styles: [
+        css('body').styles(
+          margin: Margin.zero(),
+          padding: Padding.zero(),
+          fontFamily: FontFamily('Arial, sans-serif'),
+        ),
+      ]),
+      
+      // Page-specific styles
+      HomePage(),
+    ]);
+  }
+}
+```
+
+## Performance Considerations
+
+- Style components are rendered once and kept in the DOM
+- Styles are scoped by the class names you define
+- For global styles, prefer using `@css` annotation instead
+- Avoid creating too many Style components; combine rules when possible
+
+## Complete Example
+
+```dart
+import 'package:jaspr/jaspr.dart';
+import 'package:jaspr/html.dart';
+
+class StyledCard extends StatelessComponent {
+  const StyledCard({
+    required this.title,
+    required this.description,
+    this.highlighted = false,
+    super.key,
+  });
+
+  final String title;
+  final String description;
+  final bool highlighted;
+
+  @override
+  Component build(BuildContext context) {
+    return div([
+      Style(styles: [
+        // Card base styles
+        css('.card', [
+          css('&').styles(
+            display: Display.flex,
+            flexDirection: FlexDirection.column,
+            padding: Padding.all(24.px),
+            backgroundColor: Colors.white,
+            border: Border.all(BorderSide(
+              color: Colors.grey.shade300,
+              width: 1.px,
+            )),
+            radius: BorderRadius.all(Radius.circular(12.px)),
+            shadow: BoxShadow(
+              color: Colors.black.withAlpha(0.05),
+              blurRadius: 10.px,
+              offset: Offset(0.px, 2.px),
+            ),
+            transition: Transition(
+              property: 'all',
+              duration: Duration(milliseconds: 200),
+            ),
+          ),
+          css('&:hover').styles(
+            shadow: BoxShadow(
+              color: Colors.black.withAlpha(0.1),
+              blurRadius: 20.px,
+              offset: Offset(0.px, 4.px),
+            ),
+            transform: Transform.translateY(-2.px),
+          ),
+        ]),
+        
+        // Highlighted variant
+        css('.card.highlighted').styles(
+          border: Border.all(BorderSide(
+            color: Colors.blue,
+            width: 2.px,
+          )),
+        ),
+        
+        // Title styles
+        css('.card-title').styles(
+          fontSize: 20.px,
+          fontWeight: FontWeight.bold,
+          color: Colors.grey.shade900,
+          margin: Margin.only(bottom: 12.px),
+        ),
+        
+        // Description styles
+        css('.card-description').styles(
+          fontSize: 14.px,
+          color: Colors.grey.shade600,
+          lineHeight: 1.6,
+        ),
+        
+        // Responsive styles
+        css.media(MediaQuery.screen(minWidth: 768.px), [
+          css('.card').styles(
+            padding: Padding.all(32.px),
+          ),
+        ]),
+      ]),
+      
+      // Card content
+      div([
+        h3([Component.text(title)], classes: 'card-title'),
+        p([Component.text(description)], classes: 'card-description'),
+      ], classes: 'card${highlighted ? ' highlighted' : ''}'),
+    ]);
+  }
+}
+```
+
+## @css vs Style Component
+
+| Feature | @css Annotation | Style Component |
+|---------|-----------------|------------------|
+| Scope | Global | Component-scoped |
+| Compilation | Compile-time | Runtime |
+| Use Case | App-wide styles | Dynamic/scoped styles |
+| Performance | Better (static) | Good (dynamic) |
+| Type Safety | Yes | Yes |
+
+Use `@css` for global, static styles. Use `Style` component for dynamic or component-specific styles.
+
+## See Also
+
+- [@css Annotation](/api/styling/css-annotation) - Define global styles
+- [Styles Class](/api/styling/styles) - Inline styles API
+- [CSS Selectors](/guides/css-selectors) - Selector reference

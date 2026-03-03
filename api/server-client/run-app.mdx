@@ -1,0 +1,204 @@
+---
+title: runApp()
+description: Main entry point function for running Jaspr applications on both server and client.
+---
+
+The `runApp()` function is the main entry point for running a Jaspr application. It has different implementations for server and client contexts.
+
+## Server
+
+On the server, `runApp()` initializes and runs the Jaspr application to handle incoming HTTP requests.
+
+### Signature
+
+```dart
+void runApp(Component app)
+```
+
+<ParamField path="app" type="Component" required>
+  The root component of your application.
+</ParamField>
+
+### Usage
+
+```dart
+import 'package:jaspr/jaspr.dart';
+
+void main() {
+  // Initialize Jaspr with options
+  Jaspr.initializeApp(
+    options: defaultServerOptions,
+  );
+  
+  // Run the app
+  runApp(App());
+}
+
+class App extends StatelessComponent {
+  @override
+  Component build(BuildContext context) {
+    return Document(
+      head: [
+        title([], [text('My App')]),
+      ],
+      body: [
+        div([], [text('Hello World')]),
+      ],
+    );
+  }
+}
+```
+
+<Warning>
+  You must call `Jaspr.initializeApp()` before calling `runApp()` on the server. If Jaspr is not initialized, the process will exit with an error.
+</Warning>
+
+## Client
+
+On the client (browser), `runApp()` attaches the root component to the DOM and returns the binding.
+
+### Signature
+
+```dart
+ClientAppBinding runApp(
+  Component app, 
+  {String attachTo = 'body'}
+)
+```
+
+<ParamField path="app" type="Component" required>
+  The root component of your client application.
+</ParamField>
+
+<ParamField path="attachTo" type="String" default="'body'">
+  The DOM selector to attach the component to. Defaults to `'body'`.
+</ParamField>
+
+### Usage
+
+```dart
+import 'package:jaspr/jaspr.dart';
+
+void main() {
+  // Attach and run the app in the browser
+  runApp(App());
+}
+
+class App extends StatelessComponent {
+  @override
+  Component build(BuildContext context) {
+    return div([], [
+      text('Client App Running'),
+    ]);
+  }
+}
+```
+
+### Attaching to a Custom Element
+
+```dart
+void main() {
+  // Attach to a specific DOM element
+  runApp(App(), attachTo: '#app-container');
+}
+```
+
+## Related Functions
+
+### serveApp()
+
+Returns a shelf handler that serves the provided component and related assets. This is useful when integrating Jaspr with other Dart server frameworks.
+
+```dart
+Handler serveApp(AppHandler handler)
+```
+
+**Type Definitions:**
+```dart
+typedef RenderFunction = FutureOr<Response> Function(Component);
+typedef AppHandler = FutureOr<Response> Function(
+  Request request, 
+  RenderFunction render
+);
+```
+
+**Example:**
+```dart
+import 'package:jaspr/jaspr.dart';
+import 'package:shelf/shelf.dart';
+
+void main() {
+  Jaspr.initializeApp(options: defaultServerOptions);
+  
+  final handler = serveApp((request, render) async {
+    // Custom request handling logic
+    if (request.url.path == '/api/data') {
+      return Response.ok('{"data": "value"}');
+    }
+    
+    // Render the component
+    return render(App());
+  });
+  
+  // Use handler with shelf
+}
+```
+
+### renderComponent()
+
+Directly renders a component to HTML without running a server. Returns a `ResponseLike` object.
+
+```dart
+Future<ResponseLike> renderComponent(
+  Component app, 
+  {
+    Request? request, 
+    bool standalone = false
+  }
+)
+```
+
+<ParamField path="app" type="Component" required>
+  The component to render.
+</ParamField>
+
+<ParamField path="request" type="Request">
+  Optional request object for getting the current URL and headers. If not provided, defaults to `GET https://0.0.0.0/`.
+</ParamField>
+
+<ParamField path="standalone" type="bool" default="false">
+  When `false`, the HTML output will have a full document structure (html, head, body). When `true`, only the component markup is rendered.
+</ParamField>
+
+**Response Type:**
+```dart
+typedef ResponseLike = ({
+  int statusCode,
+  Uint8List body,
+  Map<String, List<String>> headers
+});
+```
+
+**Example:**
+```dart
+import 'package:jaspr/jaspr.dart';
+
+void main() async {
+  Jaspr.initializeApp(options: defaultServerOptions);
+  
+  final result = await renderComponent(
+    div([], [text('Hello World')]),
+    standalone: true,
+  );
+  
+  print('Status: ${result.statusCode}');
+  print('Headers: ${result.headers}');
+  print('Body: ${utf8.decode(result.body)}');
+}
+```
+
+## See Also
+
+- [Jaspr.initializeApp()](/api/config/jaspr-options) - Initialize Jaspr with options
+- [@client Components](/api/utils/at_client) - Hydrating components on the client
+- [Server Rendering](/dev/server) - Learn more about server-side rendering

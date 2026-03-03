@@ -1,0 +1,185 @@
+---
+title: StatelessComponent
+description: API reference for StatelessComponent class
+---
+
+## Overview
+
+`StatelessComponent` is a component that does not require mutable state. It describes part of the user interface by building a constellation of other components that describe the user interface more concretely.
+
+Stateless components are useful when the part of the user interface you are describing does not depend on anything other than the configuration information in the object itself and the `BuildContext` in which the component is inflated.
+
+## Constructor
+
+```dart
+const StatelessComponent({Key? key})
+```
+
+<ParamField path="key" type="Key?">
+  An optional key to use for controlling how components are replaced in the tree.
+</ParamField>
+
+## Methods
+
+### build
+
+```dart
+Component build(BuildContext context)
+```
+
+Describes the part of the user interface represented by this component.
+
+The framework calls this method when this component is inserted into the tree in a given `BuildContext` and when the dependencies of this component change (e.g., an `InheritedComponent` referenced by this component changes).
+
+<ParamField path="context" type="BuildContext">
+  The location in the tree where this component is being built. Provides access to inherited components and other contextual information.
+</ParamField>
+
+<ResponseField name="return" type="Component">
+  The component that describes this part of the user interface.
+</ResponseField>
+
+**Implementation requirements:**
+- Must only depend on the fields of the component (which must not change over time)
+- Must only depend on ambient state obtained from `context` using `BuildContext.dependOnInheritedComponentOfExactType`
+- Should not have any side effects beyond building a component
+
+### shouldRebuild
+
+```dart
+bool shouldRebuild(covariant Component newComponent)
+```
+
+Determines whether a rebuild can be skipped when the component is about to update.
+
+<ParamField path="newComponent" type="Component">
+  The new component configuration.
+</ParamField>
+
+<ResponseField name="return" type="bool">
+  `true` if the component should rebuild (default), `false` to skip the rebuild.
+</ResponseField>
+
+<Note>
+  This method exists only as a performance optimization and gives no guarantees about when the component is rebuilt. Keep the implementation efficient and avoid deep comparisons or performance-heavy checks.
+</Note>
+
+### createElement
+
+```dart
+Element createElement()
+```
+
+Creates a `StatelessElement` to manage this component's location in the tree.
+
+<ResponseField name="return" type="StatelessElement">
+  The element that will manage this component.
+</ResponseField>
+
+<Note>
+  It is uncommon for subclasses to override this method.
+</Note>
+
+## Performance Considerations
+
+The `build` method is typically only called in three situations:
+1. The first time the component is inserted in the tree
+2. When the component's parent changes its configuration
+3. When an `InheritedComponent` it depends on changes
+
+### Optimization Techniques
+
+<AccordionGroup>
+  <Accordion title="Minimize nodes created">
+    Minimize the number of nodes transitively created by the build method and any components it creates.
+  </Accordion>
+
+  <Accordion title="Use const components">
+    Use `const` components where possible, and provide a `const` constructor for the component so that users can also do so.
+  </Accordion>
+
+  <Accordion title="Prefer components over helper methods">
+    When creating a reusable piece of UI, prefer using a component rather than a helper method. This allows the framework to efficiently re-render only parts that need to be updated.
+  </Accordion>
+
+  <Accordion title="Push state to the leaves">
+    If the component depends on `InheritedComponent`s that frequently change, consider refactoring into multiple components with the parts that change being pushed to the leaves.
+  </Accordion>
+</AccordionGroup>
+
+## Example Usage
+
+### Basic Stateless Component
+
+```dart
+class Greeting extends StatelessComponent {
+  const Greeting({required this.name, super.key});
+
+  final String name;
+
+  @override
+  Component build(BuildContext context) {
+    return div([
+      h1([text('Hello, $name!')]),
+      p([text('Welcome to Jaspr')]),
+    ]);
+  }
+}
+
+// Usage
+Greeting(name: 'World')
+```
+
+### With Const Constructor
+
+```dart
+class Button extends StatelessComponent {
+  const Button({
+    required this.label,
+    required this.onPressed,
+    super.key,
+  });
+
+  final String label;
+  final void Function() onPressed;
+
+  @override
+  Component build(BuildContext context) {
+    return button(
+      events: {'click': (e) => onPressed()},
+      [text(label)],
+    );
+  }
+}
+
+// Can be used as const
+const Button(label: 'Submit', onPressed: handleSubmit)
+```
+
+### With shouldRebuild Optimization
+
+```dart
+class ExpensiveComponent extends StatelessComponent {
+  const ExpensiveComponent({required this.data, super.key});
+
+  final String data;
+
+  @override
+  bool shouldRebuild(covariant ExpensiveComponent newComponent) {
+    // Only rebuild if data actually changed
+    return data != newComponent.data;
+  }
+
+  @override
+  Component build(BuildContext context) {
+    // Expensive computation here
+    return div([text('Processed: $data')]);
+  }
+}
+```
+
+## Related Components
+
+- [StatefulComponent](/api/components/stateful) - For components that can change dynamically
+- [InheritedComponent](/api/components/inherited) - For components that provide ambient state
+- [AsyncStatelessComponent](/api/components/async) - For async components on the server

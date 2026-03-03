@@ -1,0 +1,326 @@
+---
+title: DomComponent & HTML Elements
+description: Low-level API for creating HTML elements and pre-built component classes
+---
+
+Jaspr provides both a low-level `DomComponent` API via `Component.element()` and pre-built component classes for all standard HTML elements.
+
+## Component.element()
+
+The `Component.element()` factory creates a custom HTML element with full control over all properties.
+
+### Constructor
+
+```dart
+Component.element({
+  required String tag,
+  String? id,
+  String? classes,
+  Styles? styles,
+  Map<String, String>? attributes,
+  Map<String, EventCallback>? events,
+  List<Component>? children,
+  Key? key,
+})
+```
+
+### Parameters
+
+<ParamField path="tag" type="String" required>
+  The HTML tag name (e.g., 'div', 'span', 'custom-element').
+</ParamField>
+
+<ParamField path="id" type="String?">
+  The HTML id attribute. Must be unique within the document.
+</ParamField>
+
+<ParamField path="classes" type="String?">
+  CSS class names separated by whitespace.
+  
+  ```dart
+  classes: 'btn btn-primary active'
+  ```
+</ParamField>
+
+<ParamField path="styles" type="Styles?">
+  Inline styles using the type-safe `Styles` class. See [Styles API](/api/styling/styles).
+  
+  ```dart
+  styles: Styles(
+    padding: Padding.all(16.px),
+    backgroundColor: Colors.blue,
+  )
+  ```
+</ParamField>
+
+<ParamField path="attributes" type="Map<String, String>?">
+  Additional HTML attributes as key-value pairs.
+  
+  ```dart
+  attributes: {
+    'data-id': '123',
+    'aria-label': 'Close',
+    'role': 'button',
+  }
+  ```
+</ParamField>
+
+<ParamField path="events" type="Map<String, EventCallback>?">
+  Event listeners where keys are event names and values are callbacks.
+  
+  ```dart
+  events: {
+    'click': (event) => print('Clicked'),
+    'mouseover': (event) => handleHover(),
+  }
+  ```
+</ParamField>
+
+<ParamField path="children" type="List<Component>?">
+  Child components to render inside this element.
+</ParamField>
+
+<ParamField path="key" type="Key?">
+  Optional key for component identity and state preservation.
+</ParamField>
+
+## Examples
+
+### Basic Element
+
+```dart
+Component.element(
+  tag: 'div',
+  classes: 'container',
+  children: [
+    Component.text('Hello World'),
+  ],
+)
+```
+
+Renders:
+```html
+<div class="container">Hello World</div>
+```
+
+### Custom Element with Attributes
+
+```dart
+Component.element(
+  tag: 'custom-widget',
+  attributes: {
+    'data-value': '42',
+    'mode': 'dark',
+  },
+  children: [
+    Component.text('Custom content'),
+  ],
+)
+```
+
+### Element with Styles and Events
+
+```dart
+Component.element(
+  tag: 'button',
+  classes: 'btn',
+  styles: Styles(
+    padding: Padding.symmetric(horizontal: 24.px, vertical: 12.px),
+    backgroundColor: Colors.blue,
+    color: Colors.white,
+    border: Border.none(),
+    radius: BorderRadius.all(Radius.circular(4.px)),
+  ),
+  events: {
+    'click': (event) {
+      event.preventDefault();
+      print('Button clicked');
+    },
+  },
+  children: [
+    Component.text('Click Me'),
+  ],
+)
+```
+
+## Pre-built HTML Components
+
+Jaspr provides type-safe component classes for all standard HTML elements. These extend `StatelessComponent` and wrap `Component.element()` internally.
+
+### Example: div Component
+
+```dart
+final class div extends StatelessComponent {
+  const div(
+    this.children, {
+    this.id,
+    this.classes,
+    this.styles,
+    this.attributes,
+    this.events,
+    super.key,
+  });
+
+  final String? id;
+  final String? classes;
+  final Styles? styles;
+  final Map<String, String>? attributes;
+  final Map<String, EventCallback>? events;
+  final List<Component> children;
+
+  @override
+  Component build(BuildContext context) {
+    return Component.element(
+      tag: 'div',
+      id: id,
+      classes: classes,
+      styles: styles,
+      attributes: attributes,
+      events: events,
+      children: children,
+    );
+  }
+}
+```
+
+### Using Pre-built Components
+
+```dart
+import 'package:jaspr/html.dart';
+
+div(
+  [
+    h1([Component.text('Page Title')]),
+    p([Component.text('Paragraph text')]),
+    button(
+      [Component.text('Submit')],
+      onClick: () => print('Submitted'),
+    ),
+  ],
+  id: 'app',
+  classes: 'container',
+)
+```
+
+## Component.wrapElement()
+
+Apply properties to child elements without creating a wrapper:
+
+```dart
+Component.wrapElement({
+  Key? key,
+  String? id,
+  String? classes,
+  Styles? styles,
+  Map<String, String>? attributes,
+  Map<String, EventCallback>? events,
+  required Component child,
+})
+```
+
+### Example
+
+```dart
+Component.wrapElement(
+  classes: 'wrapping-class',
+  styles: Styles(
+    backgroundColor: Colors.blue,
+    padding: Padding.all(8.px),
+  ),
+  child: div(
+    [Component.text('Hello World')],
+    classes: 'some-class',
+    styles: Styles(backgroundColor: Colors.red),
+  ),
+)
+```
+
+Renders:
+```html
+<div class="wrapping-class some-class" style="padding: 8px; background-color: red;">
+  Hello World
+</div>
+```
+
+Note: Child properties take precedence in case of conflicts.
+
+## Event Handling
+
+### Event Types
+
+```dart
+typedef EventCallback = void Function(web.Event event);
+```
+
+### Common Events
+
+```dart
+// Mouse events
+events: {
+  'click': (event) => handleClick(),
+  'dblclick': (event) => handleDoubleClick(),
+  'mousedown': (event) => handleMouseDown(),
+  'mouseup': (event) => handleMouseUp(),
+  'mouseover': (event) => handleMouseOver(),
+  'mouseout': (event) => handleMouseOut(),
+}
+
+// Keyboard events
+events: {
+  'keydown': (event) => handleKeyDown(),
+  'keyup': (event) => handleKeyUp(),
+  'keypress': (event) => handleKeyPress(),
+}
+
+// Form events
+events: {
+  'submit': (event) => handleSubmit(),
+  'input': (event) => handleInput(),
+  'change': (event) => handleChange(),
+  'focus': (event) => handleFocus(),
+  'blur': (event) => handleBlur(),
+}
+```
+
+### Accessing Event Data
+
+```dart
+input(
+  [],
+  events: {
+    'input': (event) {
+      final inputElement = event.target as web.HTMLInputElement;
+      final value = inputElement.value;
+      print('Input value: $value');
+    },
+  },
+)
+```
+
+## Available HTML Components
+
+All standard HTML elements are available as pre-built components:
+
+### Text Elements
+`a`, `b`, `br`, `code`, `em`, `i`, `s`, `small`, `span`, `strong`, `u`, `wbr`
+
+### Content Sections  
+`article`, `aside`, `div`, `footer`, `header`, `main`, `nav`, `section`, `h1`-`h6`, `p`
+
+### Forms
+`form`, `input`, `button`, `select`, `textarea`, `label`, `fieldset`, `legend`
+
+### Media
+`img`, `video`, `audio`, `canvas`, `svg`
+
+### Tables
+`table`, `thead`, `tbody`, `tr`, `td`, `th`
+
+### Lists
+`ul`, `ol`, `li`, `dl`, `dt`, `dd`
+
+## See Also
+
+- [HTML Elements Overview](/api/html/overview)
+- [Styles API](/api/styling/styles)
+- [Event Handling Guide](/guides/event-handling)

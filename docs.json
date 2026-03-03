@@ -1,122 +1,154 @@
 {
   "$schema": "https://mintlify.com/docs.json",
-  "theme": "mint",
-  "name": "Mint Starter Kit",
+  "name": "Jaspr",
+  "theme": "palm",
   "colors": {
-    "primary": "#16A34A",
-    "light": "#07C983",
-    "dark": "#15803D"
+    "primary": "#01589B",
+    "light": "#41C3FE",
+    "dark": "#00437A"
   },
-  "favicon": "/favicon.svg",
+  "navbar": {
+    "primary": {
+      "type": "github",
+      "href": "https://github.com/schultek/jaspr"
+    }
+  },
+  "footer": {
+    "socials": {
+      "github": "https://github.com/schultek/jaspr"
+    }
+  },
   "navigation": {
     "tabs": [
       {
-        "tab": "Guides",
+        "tab": "Documentation",
         "groups": [
           {
-            "group": "Getting started",
+            "group": "Get Started",
             "pages": [
-              "index",
+              "introduction",
               "quickstart",
-              "development"
+              "jaspr-vs-flutter-web"
             ]
           },
           {
-            "group": "Customization",
+            "group": "Core Concepts",
             "pages": [
-              "essentials/settings",
-              "essentials/navigation"
+              "concepts/components",
+              "concepts/html",
+              "concepts/styling",
+              "concepts/routing",
+              "concepts/data-fetching",
+              "concepts/seo"
             ]
           },
           {
-            "group": "Writing content",
+            "group": "Rendering Modes",
             "pages": [
-              "essentials/markdown",
-              "essentials/code",
-              "essentials/images",
-              "essentials/reusable-snippets"
+              "rendering/overview",
+              "rendering/server-side",
+              "rendering/client-side",
+              "rendering/static-sites"
             ]
           },
           {
-            "group": "AI tools",
+            "group": "CLI",
             "pages": [
-              "ai-tools/cursor",
-              "ai-tools/claude-code",
-              "ai-tools/windsurf"
+              "cli/overview",
+              "cli/create",
+              "cli/serve",
+              "cli/build"
+            ]
+          },
+          {
+            "group": "Advanced",
+            "pages": [
+              "advanced/testing",
+              "advanced/deploying",
+              "advanced/flutter-embedding",
+              "advanced/custom-backend"
             ]
           }
         ]
       },
       {
-        "tab": "API reference",
+        "tab": "API Reference",
         "groups": [
           {
-            "group": "API documentation",
+            "group": "Components",
             "pages": [
-              "api-reference/introduction"
+              "api/components/stateless",
+              "api/components/stateful",
+              "api/components/inherited",
+              "api/components/document",
+              "api/components/async",
+              "api/components/router",
+              "api/components/link"
             ]
           },
           {
-            "group": "Endpoint examples",
+            "group": "HTML Elements",
             "pages": [
-              "api-reference/endpoint/get",
-              "api-reference/endpoint/create",
-              "api-reference/endpoint/delete",
-              "api-reference/endpoint/webhook"
+              "api/html/overview",
+              "api/html/text",
+              "api/html/dom-component"
+            ]
+          },
+          {
+            "group": "Styling",
+            "pages": [
+              "api/styling/styles",
+              "api/styling/css-annotation",
+              "api/styling/style-component"
+            ]
+          },
+          {
+            "group": "Server & Client",
+            "pages": [
+              "api/server-client/run-app",
+              "api/server-client/sync-state",
+              "api/server-client/preload-state",
+              "api/server-client/headers-cookies"
+            ]
+          },
+          {
+            "group": "Configuration",
+            "pages": [
+              "api/config/jaspr-options",
+              "api/config/linting"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Plugins",
+        "groups": [
+          {
+            "group": "Official Plugins",
+            "pages": [
+              "plugins/overview",
+              "plugins/router",
+              "plugins/content",
+              "plugins/riverpod",
+              "plugins/serverpod"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Guides",
+        "groups": [
+          {
+            "group": "Tutorials",
+            "pages": [
+              "guides/building-first-app",
+              "guides/ssr-setup",
+              "guides/routing-navigation",
+              "guides/state-management"
             ]
           }
         ]
       }
-    ],
-    "global": {
-      "anchors": [
-        {
-          "anchor": "Documentation",
-          "href": "https://mintlify.com/docs",
-          "icon": "book-open-cover"
-        },
-        {
-          "anchor": "Blog",
-          "href": "https://mintlify.com/blog",
-          "icon": "newspaper"
-        }
-      ]
-    }
-  },
-  "logo": {
-    "light": "/logo/light.svg",
-    "dark": "/logo/dark.svg"
-  },
-  "navbar": {
-    "links": [
-      {
-        "label": "Support",
-        "href": "mailto:hi@mintlify.com"
-      }
-    ],
-    "primary": {
-      "type": "button",
-      "label": "Dashboard",
-      "href": "https://dashboard.mintlify.com"
-    }
-  },
-  "contextual": {
-    "options": [
-     "copy",
-     "view",
-     "chatgpt",
-     "claude",
-     "perplexity",
-     "mcp",
-     "cursor",
-     "vscode"
-   ]
-  },
-  "footer": {
-    "socials": {
-      "x": "https://x.com/mintlify",
-      "github": "https://github.com/mintlify",
-      "linkedin": "https://linkedin.com/company/mintlify"
-    }
+    ]
   }
 }

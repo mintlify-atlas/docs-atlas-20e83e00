@@ -1,0 +1,446 @@
+---
+title: Link
+description: API reference for Link component from jaspr_router
+---
+
+## Overview
+
+The `Link` component from the `jaspr_router` package is a drop-in replacement for the `<a>` tag that provides client-side navigation when available, falling back to default server-side navigation.
+
+## Installation
+
+```yaml
+dependencies:
+  jaspr_router: ^latest_version
+```
+
+## Constructor
+
+```dart
+const Link({
+  required String to,
+  bool replace = false,
+  Object? extra,
+  bool preload = true,
+  Target? target,
+  ReferrerPolicy? referrer,
+  String? classes,
+  Styles? styles,
+  Map<String, String>? attributes,
+  Component? child,
+  List<Component>? children,
+  Key? key,
+})
+```
+
+## Parameters
+
+<ParamField path="to" type="String" required>
+  The URL to navigate to. Can be a relative or absolute path.
+</ParamField>
+
+<ParamField path="replace" type="bool" default="false">
+  Whether to replace the current route instead of pushing a new one. Only affects client-side routing.
+</ParamField>
+
+<ParamField path="extra" type="Object?">
+  Extra data to attach to the new route. Only affects client-side routing. Must be a primitive serializable value.
+</ParamField>
+
+<ParamField path="preload" type="bool" default="true">
+  Whether to preload the target route when the link is hovered. Only affects client-side routing when using lazy routes.
+</ParamField>
+
+<ParamField path="target" type="Target?">
+  The `target` attribute value applied to the anchor element. Controls where to open the linked document.
+  
+  Values: `Target.blank`, `Target.self`, `Target.parent`, `Target.top`
+</ParamField>
+
+<ParamField path="referrer" type="ReferrerPolicy?">
+  The `referrerpolicy` attribute value applied to the anchor element. Controls how much referrer information is sent.
+</ParamField>
+
+<ParamField path="classes" type="String?">
+  The `class` attribute value applied to the anchor element. Space-separated CSS class names.
+</ParamField>
+
+<ParamField path="styles" type="Styles?">
+  Inline styles applied to the anchor element.
+</ParamField>
+
+<ParamField path="attributes" type="Map<String, String>?">
+  Other attribute values applied to the anchor element.
+</ParamField>
+
+<ParamField path="child" type="Component?">
+  Child component to render inside the anchor element. Use either `child` or `children`, not both.
+</ParamField>
+
+<ParamField path="children" type="List<Component>?">
+  Child components to render inside the anchor element. Use either `child` or `children`, not both.
+</ParamField>
+
+<ParamField path="key" type="Key?">
+  An optional key for the component.
+</ParamField>
+
+## Behavior
+
+### Client-Side Navigation
+
+When a `Router` is available in the component tree:
+- Clicking the link prevents the default browser navigation
+- Uses client-side routing via `Router.push()` or `Router.replace()`
+- No page reload occurs
+- Maintains application state
+
+### Server-Side Fallback
+
+When no `Router` is available:
+- Falls back to standard `<a>` tag behavior
+- Full page reload on navigation
+- Works without JavaScript
+
+### Preloading
+
+When `preload` is `true` (default):
+- The target route is preloaded when the link is hovered
+- Only works with `LazyRoute`s
+- Improves perceived navigation speed
+- Only affects client-side routing
+
+## Example Usage
+
+### Basic Link
+
+```dart
+import 'package:jaspr/jaspr.dart';
+import 'package:jaspr_router/jaspr_router.dart';
+
+Link(
+  to: '/about',
+  child: text('About Us'),
+)
+```
+
+### Link with Children
+
+```dart
+Link(
+  to: '/products',
+  children: [
+    img(src: '/icons/products.svg'),
+    span([text('Products')]),
+  ],
+)
+```
+
+### Styled Link
+
+```dart
+Link(
+  to: '/contact',
+  classes: 'nav-link active',
+  styles: Styles.text(
+    decoration: TextDecoration.none,
+    color: Colors.blue,
+  ),
+  child: text('Contact'),
+)
+```
+
+### Replace Navigation
+
+```dart
+Link(
+  to: '/login',
+  replace: true, // Replace current history entry
+  child: text('Login'),
+)
+```
+
+### External Link
+
+```dart
+Link(
+  to: 'https://example.com',
+  target: Target.blank,
+  referrer: ReferrerPolicy.noReferrer,
+  children: [
+    text('External Site'),
+    span([text(' ↗')]),
+  ],
+)
+```
+
+### Link with Extra Data
+
+```dart
+Link(
+  to: '/user-profile',
+  extra: {'userId': '123', 'source': 'navigation'},
+  child: text('View Profile'),
+)
+```
+
+### Disable Preloading
+
+```dart
+Link(
+  to: '/heavy-page',
+  preload: false, // Don't preload on hover
+  child: text('Heavy Page'),
+)
+```
+
+### Navigation Menu
+
+```dart
+class NavigationMenu extends StatelessComponent {
+  @override
+  Component build(BuildContext context) {
+    return nav(
+      classes: 'main-nav',
+      [
+        ul([
+          li([
+            Link(
+              to: '/',
+              classes: 'nav-link',
+              child: text('Home'),
+            ),
+          ]),
+          li([
+            Link(
+              to: '/about',
+              classes: 'nav-link',
+              child: text('About'),
+            ),
+          ]),
+          li([
+            Link(
+              to: '/blog',
+              classes: 'nav-link',
+              child: text('Blog'),
+            ),
+          ]),
+          li([
+            Link(
+              to: '/contact',
+              classes: 'nav-link',
+              child: text('Contact'),
+            ),
+          ]),
+        ]),
+      ],
+    );
+  }
+}
+```
+
+### Active Link Styling
+
+```dart
+class NavLink extends StatelessComponent {
+  const NavLink({
+    required this.to,
+    required this.label,
+    super.key,
+  });
+
+  final String to;
+  final String label;
+
+  @override
+  Component build(BuildContext context) {
+    final currentPath = context.uri.path;
+    final isActive = currentPath == to;
+
+    return Link(
+      to: to,
+      classes: isActive ? 'nav-link active' : 'nav-link',
+      styles: isActive
+          ? Styles.combine([
+              Styles.text(color: Colors.blue),
+              Styles.text(decoration: TextDecoration.underline),
+            ])
+          : null,
+      child: text(label),
+    );
+  }
+}
+
+// Usage
+NavLink(to: '/', label: 'Home')
+```
+
+### Breadcrumb Navigation
+
+```dart
+class Breadcrumbs extends StatelessComponent {
+  const Breadcrumbs({required this.items, super.key});
+
+  final List<(String path, String label)> items;
+
+  @override
+  Component build(BuildContext context) {
+    return nav(
+      attributes: {'aria-label': 'Breadcrumb'},
+      [
+        ol(
+          classes: 'breadcrumb',
+          items.map((item) {
+            final (path, label) = item;
+            return li([
+              Link(
+                to: path,
+                child: text(label),
+              ),
+            ]);
+          }).toList(),
+        ),
+      ],
+    );
+  }
+}
+
+// Usage
+Breadcrumbs(
+  items: [
+    ('/', 'Home'),
+    ('/products', 'Products'),
+    ('/products/laptops', 'Laptops'),
+  ],
+)
+```
+
+### Button-Style Link
+
+```dart
+Link(
+  to: '/signup',
+  classes: 'btn btn-primary',
+  styles: Styles.combine([
+    Styles.background(color: Colors.blue),
+    Styles.text(color: Colors.white, decoration: TextDecoration.none),
+    Styles.box(padding: EdgeInsets.symmetric(horizontal: 20.px, vertical: 10.px)),
+    Styles.raw({'border-radius': '4px'}),
+  ]),
+  child: text('Sign Up'),
+)
+```
+
+### Card with Link
+
+```dart
+class ProductCard extends StatelessComponent {
+  const ProductCard({required this.product, super.key});
+
+  final Product product;
+
+  @override
+  Component build(BuildContext context) {
+    return div(
+      classes: 'product-card',
+      [
+        Link(
+          to: '/products/${product.id}',
+          styles: Styles.text(decoration: TextDecoration.none),
+          children: [
+            img(src: product.imageUrl, alt: product.name),
+            div([
+              h3([text(product.name)]),
+              p([text('\$${product.price}')]),
+            ]),
+          ],
+        ),
+      ],
+    );
+  }
+}
+```
+
+### Download Link
+
+```dart
+Link(
+  to: '/files/document.pdf',
+  attributes: {
+    'download': 'document.pdf',
+  },
+  children: [
+    text('Download PDF'),
+    span([text(' ⬇')]),
+  ],
+)
+```
+
+## Accessibility
+
+The `Link` component renders a standard `<a>` tag, so it inherits all the accessibility benefits:
+
+- Keyboard navigable (Tab key)
+- Works with screen readers
+- Semantic HTML
+- Supports ARIA attributes via the `attributes` parameter
+
+**Example with ARIA:**
+
+```dart
+Link(
+  to: '/dashboard',
+  attributes: {
+    'aria-label': 'Go to dashboard',
+    'aria-current': 'page',
+  },
+  child: text('Dashboard'),
+)
+```
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Use semantic HTML inside links">
+    Keep link content simple and descriptive. Avoid nesting interactive elements.
+    
+    ```dart
+    // Good
+    Link(to: '/products', child: text('View Products'))
+    
+    // Avoid
+    Link(to: '/products', child: button([text('Click')]))
+    ```
+  </Accordion>
+
+  <Accordion title="Disable preload for expensive routes">
+    For routes that load heavy resources, consider disabling preload.
+  </Accordion>
+
+  <Accordion title="Use target wisely">
+    Only use `target="_blank"` for external links. Internal links should stay in the same tab.
+  </Accordion>
+
+  <Accordion title="Provide clear link text">
+    Avoid generic text like "click here". Use descriptive labels.
+  </Accordion>
+</AccordionGroup>
+
+## Important Notes
+
+<Info>
+  The `Link` component automatically detects if a `Router` is available in the component tree. If no router is found, it falls back to standard anchor tag behavior.
+</Info>
+
+<Warning>
+  The `extra` parameter only works with client-side routing. It will be ignored for server-side navigation.
+</Warning>
+
+<Note>
+  Preloading only affects lazy routes. Routes loaded eagerly won't benefit from the preload functionality.
+</Note>
+
+## Related Components
+
+- [Router](/api/components/router) - Router component for managing routes
+- [StatelessComponent](/api/components/stateless) - Base stateless component class

@@ -1,0 +1,497 @@
+---
+title: Styles Class
+description: Type-safe CSS styling API for Jaspr components
+---
+
+The `Styles` class provides a type-safe way to define inline CSS styles for HTML elements in Jaspr. It supports all common CSS properties with compile-time type checking.
+
+## Constructor
+
+```dart
+const Styles({
+  // Box Properties
+  All? all,
+  String? content,
+  Display? display,
+  Position? position,
+  ZIndex? zIndex,
+  Unit? width,
+  Unit? height,
+  Unit? minWidth,
+  Unit? minHeight,
+  Unit? maxWidth,
+  Unit? maxHeight,
+  AspectRatio? aspectRatio,
+  Padding? padding,
+  Margin? margin,
+  BoxSizing? boxSizing,
+  Border? border,
+  BorderRadius? radius,
+  Outline? outline,
+  double? opacity,
+  Visibility? visibility,
+  Overflow? overflow,
+  Appearance? appearance,
+  BoxShadow? shadow,
+  Filter? filter,
+  Filter? backdropFilter,
+  Cursor? cursor,
+  UserSelect? userSelect,
+  PointerEvents? pointerEvents,
+  Animation? animation,
+  Transition? transition,
+  Transform? transform,
+  
+  // Flexbox Properties
+  FlexDirection? flexDirection,
+  FlexWrap? flexWrap,
+  JustifyContent? justifyContent,
+  AlignItems? alignItems,
+  AlignContent? alignContent,
+  
+  // Grid Properties
+  GridTemplate? gridTemplate,
+  List<TrackSize>? autoRows,
+  List<TrackSize>? autoColumns,
+  JustifyItems? justifyItems,
+  Gap? gap,
+  
+  // Flex/Grid Item Properties
+  Flex? flex,
+  int? order,
+  AlignSelf? alignSelf,
+  JustifySelf? justifySelf,
+  GridPlacement? gridPlacement,
+  
+  // List Properties
+  ListStyle? listStyle,
+  ImageStyle? listImage,
+  ListStylePosition? listPosition,
+  
+  // Text Properties
+  Color? color,
+  TextAlign? textAlign,
+  FontFamily? fontFamily,
+  Unit? fontSize,
+  FontWeight? fontWeight,
+  FontStyle? fontStyle,
+  TextDecoration? textDecoration,
+  TextTransform? textTransform,
+  Unit? textIndent,
+  Unit? letterSpacing,
+  Unit? wordSpacing,
+  Unit? lineHeight,
+  TextShadow? textShadow,
+  TextOverflow? textOverflow,
+  WhiteSpace? whiteSpace,
+  Quotes? quotes,
+  
+  // Background Properties
+  Color? backgroundColor,
+  ImageStyle? backgroundImage,
+  BackgroundOrigin? backgroundOrigin,
+  BackgroundPosition? backgroundPosition,
+  BackgroundAttachment? backgroundAttachment,
+  BackgroundRepeat? backgroundRepeat,
+  BackgroundSize? backgroundSize,
+  BackgroundClip? backgroundClip,
+  
+  // Raw Styles
+  Map<String, String>? raw,
+})
+```
+
+## Basic Usage
+
+```dart
+import 'package:jaspr/html.dart';
+
+div(
+  [Component.text('Styled content')],
+  styles: Styles(
+    padding: Padding.all(16.px),
+    backgroundColor: Colors.blue,
+    color: Colors.white,
+  ),
+)
+```
+
+## Box Properties
+
+### Dimensions
+
+<ParamField path="width" type="Unit?">
+  Element width using CSS units (px, em, rem, %, vh, vw, etc.)
+  
+  ```dart
+  width: 300.px
+  width: 50.percent
+  width: 100.vw
+  ```
+</ParamField>
+
+<ParamField path="height" type="Unit?">
+  Element height.
+  
+  ```dart
+  height: 200.px
+  height: 100.percent
+  ```
+</ParamField>
+
+<ParamField path="minWidth" type="Unit?">
+  Minimum width constraint.
+</ParamField>
+
+<ParamField path="maxWidth" type="Unit?">
+  Maximum width constraint.
+</ParamField>
+
+<ParamField path="minHeight" type="Unit?">
+  Minimum height constraint.
+</ParamField>
+
+<ParamField path="maxHeight" type="Unit?">
+  Maximum height constraint.
+</ParamField>
+
+<ParamField path="aspectRatio" type="AspectRatio?">
+  Aspect ratio of the element.
+  
+  ```dart
+  aspectRatio: AspectRatio(16, 9)
+  ```
+</ParamField>
+
+### Spacing
+
+<ParamField path="padding" type="Padding?">
+  Inner spacing around content.
+  
+  ```dart
+  padding: Padding.all(16.px)
+  padding: Padding.symmetric(horizontal: 20.px, vertical: 10.px)
+  padding: Padding.only(left: 8.px, top: 4.px)
+  ```
+</ParamField>
+
+<ParamField path="margin" type="Margin?">
+  Outer spacing around element.
+  
+  ```dart
+  margin: Margin.all(16.px)
+  margin: Margin.symmetric(horizontal: 20.px, vertical: 10.px)
+  margin: Margin.zero()
+  ```
+</ParamField>
+
+### Display & Position
+
+<ParamField path="display" type="Display?">
+  Display mode of the element.
+  
+  ```dart
+  display: Display.flex
+  display: Display.grid
+  display: Display.block
+  display: Display.inlineBlock
+  display: Display.none
+  ```
+</ParamField>
+
+<ParamField path="position" type="Position?">
+  Positioning scheme.
+  
+  ```dart
+  position: Position.relative(top: 10.px, left: 20.px)
+  position: Position.absolute(top: 0.px, right: 0.px)
+  position: Position.fixed(bottom: 10.px)
+  position: Position.sticky(top: 0.px)
+  ```
+</ParamField>
+
+<ParamField path="zIndex" type="ZIndex?">
+  Stack order of positioned elements.
+  
+  ```dart
+  zIndex: ZIndex(10)
+  ```
+</ParamField>
+
+### Borders & Outlines
+
+<ParamField path="border" type="Border?">
+  Element border.
+  
+  ```dart
+  border: Border.all(BorderSide(color: Colors.grey, width: 1.px))
+  border: Border.only(
+    top: BorderSide(color: Colors.blue, width: 2.px),
+    bottom: BorderSide(color: Colors.blue, width: 2.px),
+  )
+  border: Border.none()
+  ```
+</ParamField>
+
+<ParamField path="radius" type="BorderRadius?">
+  Border corner radius.
+  
+  ```dart
+  radius: BorderRadius.all(Radius.circular(8.px))
+  radius: BorderRadius.only(
+    topLeft: Radius.circular(4.px),
+    topRight: Radius.circular(4.px),
+  )
+  ```
+</ParamField>
+
+<ParamField path="outline" type="Outline?">
+  Outline around element (doesn't affect layout).
+  
+  ```dart
+  outline: Outline(color: Colors.blue, width: 2.px)
+  ```
+</ParamField>
+
+### Visual Effects
+
+<ParamField path="opacity" type="double?">
+  Transparency level (0.0 to 1.0).
+  
+  ```dart
+  opacity: 0.5
+  ```
+</ParamField>
+
+<ParamField path="shadow" type="BoxShadow?">
+  Drop shadow effect.
+  
+  ```dart
+  shadow: BoxShadow(
+    color: Colors.black.withAlpha(0.2),
+    blurRadius: 10.px,
+    offset: Offset(0.px, 2.px),
+  )
+  ```
+</ParamField>
+
+<ParamField path="filter" type="Filter?">
+  Visual filters like blur, brightness, etc.
+  
+  ```dart
+  filter: Filter.blur(5.px)
+  filter: Filter.brightness(1.2)
+  ```
+</ParamField>
+
+<ParamField path="transform" type="Transform?">
+  2D/3D transformations.
+  
+  ```dart
+  transform: Transform.rotate(45.deg)
+  transform: Transform.scale(1.5)
+  transform: Transform.translate(10.px, 20.px)
+  ```
+</ParamField>
+
+## Text Properties
+
+<ParamField path="color" type="Color?">
+  Text color.
+  
+  ```dart
+  color: Colors.blue
+  color: Color.hex('#FF5733')
+  color: Color.rgb(255, 87, 51)
+  ```
+</ParamField>
+
+<ParamField path="fontSize" type="Unit?">
+  Font size.
+  
+  ```dart
+  fontSize: 16.px
+  fontSize: 1.2.rem
+  ```
+</ParamField>
+
+<ParamField path="fontWeight" type="FontWeight?">
+  Font weight/thickness.
+  
+  ```dart
+  fontWeight: FontWeight.bold
+  fontWeight: FontWeight.w500
+  fontWeight: FontWeight.normal
+  ```
+</ParamField>
+
+<ParamField path="fontFamily" type="FontFamily?">
+  Font family.
+  
+  ```dart
+  fontFamily: FontFamily('Arial, sans-serif')
+  fontFamily: FontFamily.list(['Roboto', 'Helvetica', 'sans-serif'])
+  ```
+</ParamField>
+
+<ParamField path="textAlign" type="TextAlign?">
+  Horizontal text alignment.
+  
+  ```dart
+  textAlign: TextAlign.center
+  textAlign: TextAlign.left
+  textAlign: TextAlign.right
+  textAlign: TextAlign.justify
+  ```
+</ParamField>
+
+<ParamField path="lineHeight" type="Unit?">
+  Line height/spacing.
+  
+  ```dart
+  lineHeight: 1.5
+  lineHeight: 24.px
+  ```
+</ParamField>
+
+## Flexbox Properties
+
+<ParamField path="flexDirection" type="FlexDirection?">
+  Main axis direction.
+  
+  ```dart
+  flexDirection: FlexDirection.row
+  flexDirection: FlexDirection.column
+  ```
+</ParamField>
+
+<ParamField path="justifyContent" type="JustifyContent?">
+  Alignment along main axis.
+  
+  ```dart
+  justifyContent: JustifyContent.center
+  justifyContent: JustifyContent.spaceBetween
+  ```
+</ParamField>
+
+<ParamField path="alignItems" type="AlignItems?">
+  Alignment along cross axis.
+  
+  ```dart
+  alignItems: AlignItems.center
+  alignItems: AlignItems.stretch
+  ```
+</ParamField>
+
+<ParamField path="gap" type="Gap?">
+  Spacing between flex/grid items.
+  
+  ```dart
+  gap: Gap.all(16.px)
+  gap: Gap.symmetric(row: 20.px, column: 10.px)
+  ```
+</ParamField>
+
+## Background Properties
+
+<ParamField path="backgroundColor" type="Color?">
+  Background color.
+  
+  ```dart
+  backgroundColor: Colors.white
+  backgroundColor: Color.hex('#F0F0F0')
+  ```
+</ParamField>
+
+<ParamField path="backgroundImage" type="ImageStyle?">
+  Background image.
+  
+  ```dart
+  backgroundImage: ImageStyle.url('/images/bg.jpg')
+  ```
+</ParamField>
+
+<ParamField path="backgroundSize" type="BackgroundSize?">
+  How background image is sized.
+  
+  ```dart
+  backgroundSize: BackgroundSize.cover
+  backgroundSize: BackgroundSize.contain
+  ```
+</ParamField>
+
+## Combining Styles
+
+```dart
+// Using Styles.combine()
+final baseStyles = Styles(
+  padding: Padding.all(16.px),
+  backgroundColor: Colors.white,
+);
+
+final combinedStyles = Styles.combine([
+  baseStyles,
+  Styles(border: Border.all(BorderSide(color: Colors.grey, width: 1.px))),
+]);
+```
+
+## Raw CSS Properties
+
+<ParamField path="raw" type="Map<String, String>?">
+  Add any CSS property not covered by the type-safe API.
+  
+  ```dart
+  raw: {
+    'backdrop-filter': 'blur(10px)',
+    '-webkit-appearance': 'none',
+  }
+  ```
+</ParamField>
+
+## Complete Example
+
+```dart
+import 'package:jaspr/html.dart';
+
+class Card extends StatelessComponent {
+  @override
+  Component build(BuildContext context) {
+    return div(
+      [
+        h2(
+          [Component.text('Card Title')],
+          styles: Styles(
+            fontSize: 24.px,
+            fontWeight: FontWeight.bold,
+            margin: Margin.only(bottom: 8.px),
+          ),
+        ),
+        p(
+          [Component.text('Card content goes here')],
+          styles: Styles(
+            color: Colors.grey.shade700,
+            lineHeight: 1.6,
+          ),
+        ),
+      ],
+      styles: Styles(
+        padding: Padding.all(24.px),
+        backgroundColor: Colors.white,
+        border: Border.all(BorderSide(color: Colors.grey.shade300, width: 1.px)),
+        radius: BorderRadius.all(Radius.circular(8.px)),
+        shadow: BoxShadow(
+          color: Colors.black.withAlpha(0.1),
+          blurRadius: 10.px,
+          offset: Offset(0.px, 2.px),
+        ),
+      ),
+    );
+  }
+}
+```
+
+## See Also
+
+- [@css Annotation](/api/styling/css-annotation) - Define global styles
+- [Style Component](/api/styling/style-component) - Render style rules
+- [CSS Units](/api/styling/units) - Available CSS unit types
