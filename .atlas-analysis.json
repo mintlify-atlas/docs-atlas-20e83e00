@@ -1,0 +1,168 @@
+{
+  "projectType": "framework",
+  "projectName": "Jaspr",
+  "projectDescription": "Modern web framework for building websites in Dart with SSR, CSR, and SSG support",
+  "theme": "palm",
+  "primaryColor": "#01589B",
+  "lightColor": "#41C3FE",
+  "darkColor": "#00437A",
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Get Started",
+            "pages": [
+              "introduction",
+              "quickstart",
+              "jaspr-vs-flutter-web"
+            ]
+          },
+          {
+            "group": "Core Concepts",
+            "pages": [
+              "concepts/components",
+              "concepts/html",
+              "concepts/styling",
+              "concepts/routing",
+              "concepts/data-fetching",
+              "concepts/seo"
+            ]
+          },
+          {
+            "group": "Rendering Modes",
+            "pages": [
+              "rendering/overview",
+              "rendering/server-side",
+              "rendering/client-side",
+              "rendering/static-sites"
+            ]
+          },
+          {
+            "group": "CLI",
+            "pages": [
+              "cli/overview",
+              "cli/create",
+              "cli/serve",
+              "cli/build"
+            ]
+          },
+          {
+            "group": "Advanced",
+            "pages": [
+              "advanced/testing",
+              "advanced/deploying",
+              "advanced/flutter-embedding",
+              "advanced/custom-backend"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "API Reference",
+        "groups": [
+          {
+            "group": "Components",
+            "pages": [
+              "api/components/stateless",
+              "api/components/stateful",
+              "api/components/inherited",
+              "api/components/document",
+              "api/components/async",
+              "api/components/router",
+              "api/components/link"
+            ]
+          },
+          {
+            "group": "HTML Elements",
+            "pages": [
+              "api/html/overview",
+              "api/html/text",
+              "api/html/dom-component"
+            ]
+          },
+          {
+            "group": "Styling",
+            "pages": [
+              "api/styling/styles",
+              "api/styling/css-annotation",
+              "api/styling/style-component"
+            ]
+          },
+          {
+            "group": "Server & Client",
+            "pages": [
+              "api/server-client/run-app",
+              "api/server-client/sync-state",
+              "api/server-client/preload-state",
+              "api/server-client/headers-cookies"
+            ]
+          },
+          {
+            "group": "Configuration",
+            "pages": [
+              "api/config/jaspr-options",
+              "api/config/linting"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Plugins",
+        "groups": [
+          {
+            "group": "Official Plugins",
+            "pages": [
+              "plugins/overview",
+              "plugins/router",
+              "plugins/content",
+              "plugins/riverpod",
+              "plugins/serverpod"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Guides",
+        "groups": [
+          {
+            "group": "Tutorials",
+            "pages": [
+              "guides/building-first-app",
+              "guides/ssr-setup",
+              "guides/routing-navigation",
+              "guides/state-management"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "Flutter-like component model for web development",
+    "Server-side rendering (SSR) out of the box",
+    "Client-side rendering with automatic hydration",
+    "Static site generation (SSG)",
+    "Hot reload during development",
+    "Type-safe HTML and CSS in Dart",
+    "Automatic state synchronization between server and client",
+    "Plugin ecosystem (router, content, riverpod, serverpod)",
+    "CLI tool for project scaffolding and builds",
+    "Flutter widget embedding support"
+  ],
+  "publicApiSurface": [
+    "Component (StatelessComponent, StatefulComponent, InheritedComponent)",
+    "runApp()",
+    "DomComponent / html elements (div, span, button, etc.)",
+    "Text",
+    "Document",
+    "AsyncBuilder / AsyncStatelessComponent",
+    "Router / Link (jaspr_router)",
+    "Styles / @css annotation",
+    "SyncStateMixin / PreloadStateMixin",
+    "@client / @sync annotations",
+    "ContentApp (jaspr_content)",
+    "jaspr create / serve / build (CLI commands)"
+  ]
+}
