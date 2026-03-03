@@ -1,0 +1,201 @@
+---
+title: RawText
+description: Component for rendering raw HTML content without escaping
+---
+
+The `RawText` component renders its input as raw HTML without escaping. This is useful for rendering pre-sanitized HTML content, such as markdown-converted text or trusted HTML from a CMS.
+
+<Warning>
+**Security Warning:** This component does not escape any user input and is vulnerable to [cross-site scripting (XSS) attacks](https://owasp.org/www-community/attacks/xss/). Make sure to sanitize any user input when using this component.
+</Warning>
+
+## Constructor
+
+```dart
+RawText(String text, {Key? key})
+```
+
+<ParamField path="text" type="String" required>
+  The HTML string to render. This content will be inserted directly into the DOM without escaping.
+</ParamField>
+
+<ParamField path="key" type="Key?">
+  Optional key for this component.
+</ParamField>
+
+## Basic usage
+
+Render HTML content from a trusted source:
+
+```dart
+import 'package:jaspr/jaspr.dart';
+
+class BlogPost extends StatelessComponent {
+  final String htmlContent;
+  
+  const BlogPost({required this.htmlContent});
+  
+  @override
+  Component build(BuildContext context) {
+    return article([
+      RawText(htmlContent),
+    ]);
+  }
+}
+```
+
+## With markdown conversion
+
+Combine with a markdown parser to render markdown as HTML:
+
+```dart
+import 'package:jaspr/jaspr.dart';
+import 'package:markdown/markdown.dart' as md;
+
+class MarkdownContent extends StatelessComponent {
+  final String markdown;
+  
+  const MarkdownContent({required this.markdown});
+  
+  @override
+  Component build(BuildContext context) {
+    final htmlContent = md.markdownToHtml(markdown);
+    
+    return div([
+      RawText(htmlContent),
+    ]);
+  }
+}
+```
+
+## Server-side rendering
+
+`RawText` works seamlessly with server-side rendering:
+
+```dart
+import 'package:jaspr/server.dart';
+
+class ArticlePage extends AsyncStatelessComponent {
+  final String articleId;
+  
+  const ArticlePage({required this.articleId});
+  
+  @override
+  Future<Component> build(BuildContext context) async {
+    // Fetch article from database
+    final article = await fetchArticle(articleId);
+    
+    // article.content is pre-sanitized HTML from CMS
+    return Document.head(
+      title: article.title,
+      meta: {
+        'description': article.excerpt,
+      },
+      child: article_([
+        h1([text(article.title)]),
+        RawText(article.content),
+      ]),
+    );
+  }
+}
+```
+
+## Security best practices
+
+<AccordionGroup>
+  <Accordion title="Always sanitize user input">
+    Never pass unsanitized user input to `RawText`. Use a library like `html` to sanitize content:
+    
+    ```dart
+    import 'package:html/parser.dart' as html_parser;
+    import 'package:html/dom.dart' as html_dom;
+    
+    String sanitizeHtml(String unsafeHtml) {
+      final document = html_parser.parse(unsafeHtml);
+      
+      // Remove dangerous tags and attributes
+      document.querySelectorAll('script, iframe, object, embed').forEach((element) {
+        element.remove();
+      });
+      
+      document.querySelectorAll('*').forEach((element) {
+        element.attributes.removeWhere(
+          (key, value) => key.startsWith('on') || key == 'href' && value.startsWith('javascript:'),
+        );
+      });
+      
+      return document.body?.innerHtml ?? '';
+    }
+    
+    // Usage
+    final safeHtml = sanitizeHtml(userInput);
+    RawText(safeHtml);
+    ```
+  </Accordion>
+  
+  <Accordion title="Use Text for plain content">
+    If you just need to display plain text, use the `Text` component instead. It automatically escapes HTML:
+    
+    ```dart
+    // Safe - automatically escaped
+    Text('<script>alert("XSS")</script>')
+    
+    // Dangerous - executes the script
+    RawText('<script>alert("XSS")</script>')
+    ```
+  </Accordion>
+  
+  <Accordion title="Validate content sources">
+    Only use `RawText` with content from trusted sources:
+    
+    ✅ **Safe sources:**
+    - Markdown converted to HTML by your server
+    - HTML from your CMS after sanitization
+    - Static HTML templates you control
+    - Pre-validated API responses
+    
+    ❌ **Unsafe sources:**
+    - User comments or posts
+    - URL parameters
+    - Form inputs
+    - Third-party APIs without validation
+  </Accordion>
+  
+  <Accordion title="Content Security Policy">
+    Add a Content Security Policy header to mitigate XSS risks:
+    
+    ```dart
+    import 'package:jaspr/server.dart';
+    
+    void main() {
+      runApp(
+        Document(
+          head: [
+            meta(
+              httpEquiv: 'Content-Security-Policy',
+              content: "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline';",
+            ),
+          ],
+          body: App(),
+        ),
+      );
+    }
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Comparison with Text
+
+| Feature | Text | RawText |
+|---------|------|----------|
+| HTML escaping | ✅ Automatic | ❌ None |
+| XSS protection | ✅ Built-in | ❌ Manual |
+| Use case | Plain text | Pre-sanitized HTML |
+| Performance | Fast | Fast |
+| Accessibility | Automatic | Depends on HTML |
+
+## Related
+
+- [Text](/api/html/text) - Safe text rendering with automatic escaping
+- [DomComponent](/api/html/dom-component) - Type-safe HTML element creation
+- [SEO & Meta](/concepts/seo) - Adding meta tags and structured data

@@ -91,6 +91,7 @@
             "pages": [
               "api/html/overview",
               "api/html/text",
+              "api/html/raw-text",
               "api/html/dom-component"
             ]
           },
